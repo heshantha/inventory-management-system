@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Setup Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button.secondary {
+            background: #2196F3;
+        }
+        .button.secondary:hover {
+            background: #0b7dda;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .check-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #ccc;
+        }
+        .check-item.pass {
+            border-left-color: #4CAF50;
+        }
+        .check-item.fail {
+            border-left-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Firebase Setup Checker</h1>
+        <p>This tool will help diagnose Firebase connection issues and create the admin user.</p>
+        
+        <div id="status" class="status loading">⏳ Initializing Firebase...</div>
+        
+        <div id="results"></div>
+        
+        <div id="actions" style="display: none;">
+            <button class="button" onclick="createAdmin()">Create Admin User</button>
+            <button class="button secondary" onclick="checkStatus()">Recheck Status</button>
+            <button class="button secondary" onclick="testLogin()">Test Login</button>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyANUn5n_N0wtyo_agpzOxLk_3SEhXMfCWk",
+            authDomain: "inventory-billing-system-3ab24.firebaseapp.com",
+            projectId: "inventory-billing-system-3ab24",
+            storageBucket: "inventory-billing-system-3ab24.firebasestorage.app",
+            messagingSenderId: "81706840264",
+            appId: "1:81706840264:web:a77714aa9cec653dfab5fd"
+        };
+
+        let app, auth, db;
+        
+        async function initialize() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            const actionsDiv = document.getElementById('actions');
+            
+            try {
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Firebase initialized successfully!';
+                
+                // Run checks
+                await runChecks();
+                
+                actionsDiv.style.display = 'block';
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Firebase initialization failed:<br><pre>${error.message}</pre>`;
+                resultsDiv.innerHTML = `
+                    <h3>⚠️ Firebase Not Set Up</h3>
+                    <p><strong>Action Required:</strong></p>
+                    <ol>
+                        <li>Go to <a href="https://console.firebase.google.com/project/inventory-billing-system-3ab24" target="_blank">Firebase Console</a></li>
+                        <li>Click <strong>Build</strong> → <strong>Firestore Database</strong> → <strong>Create database</strong> (Choose "test mode")</li>
+                        <li>Click <strong>Build</strong> → <strong>Authentication</strong> → Enable <strong>Email/Password</strong></li>
+                        <li>Refresh this page</li>
+                    </ol>
+                `;
+            }
+        }
+
+        async function runChecks() {
+            const resultsDiv = document.getElementById('results');
+            let html = '<h3>🔍 Diagnostic Results:</h3>';
+            
+            // Check 1: Firestore access
+            try {
+                const testRef = collection(db, 'users');
+                await getDocs(testRef);
+                html += '<div class="check-item pass">✅ Firestore: Connected and accessible</div>';
+            } catch (error) {
+                html += `<div class="check-item fail">❌ Firestore: ${error.message}</div>`;
+                html += '<p><strong>Fix:</strong> Enable Firestore Database in Firebase Console</p>';
+            }
+            
+            // Check 2: Check if admin exists in Firestore
+            try {
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('username', '==', 'admin'));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    html += '<div class="check-item fail">❌ Admin User: Not found in Firestore</div>';
+                    html += '<p><strong>Action:</strong> Click "Create Admin User" button below</p>';
+                } else {
+                    html += '<div class="check-item pass">✅ Admin User: Found in Firestore</div>';
+                    const adminData = snapshot.docs[0].data();
+                    html += `<pre>Username: ${adminData.username}\nEmail: ${adminData.email}\nRole: ${adminData.role}</pre>`;
+                }
+            } catch (error) {
+                html += `<div class="check-item fail">❌ Admin Check Failed: ${error.message}</div>`;
+            }
+            
+            // Check 3: Authentication status
+            if (auth.currentUser) {
+                html += `<div class="check-item pass">✅ Authentication: Logged in as ${auth.currentUser.email}</div>`;
+            } else {
+                html += '<div class="check-item">ℹ️ Authentication: Not logged in</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        window.createAdmin = async function() {
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '<div class="status loading">⏳ Creating admin user...</div>';
+            
+            try {
+                // Check if admin already exists in Firestore
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('username', '==', 'admin'));
+                const snapshot = await getDocs(q);
+                
+                if (!snapshot.empty) {
+                    outputDiv.innerHTML = '<div class="status error">❌ Admin user already exists in Firestore!</div>';
+                    return;
+                }
+                
+                // Create auth user
+                let userCredential;
+                try {
+                    userCredential = await createUserWithEmailAndPassword(
+                        auth,
+                        'admin@inventory.com',
+                        'admin123'
+                    );
+                } catch (authError) {
+                    if (authError.code === 'auth/email-already-in-use') {
+                        // Email exists, try to sign in to get UID
+                        try {
+                            userCredential = await signInWithEmailAndPassword(
+                                auth,
+                                'admin@inventory.com',
+                                'admin123'
+                            );
+                        } catch (loginError) {
+                            outputDiv.innerHTML = `<div class="status error">❌ Admin email exists but password doesn't match!<br>Please delete admin@inventory.com from Firebase Auth Console</div>`;
+                            return;
+                        }
+                    } else {
+                        throw authError;
+                    }
+                }
+                
+                // Create Firestore document
+                await addDoc(collection(db, 'users'), {
+                    uid: userCredential.user.uid,
+                    username: 'admin',
+                    full_name: 'Administrator',
+                    email: 'admin@inventory.com',
+                    role: 'admin',
+                    is_active: true,
+                    created_at: new Date()
+                });
+                
+                outputDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Admin user created successfully!<br><br>
+                        <strong>Login credentials:</strong><br>
+                        Username: admin<br>
+                        Password: admin123<br><br>
+                        <a href="http://localhost:5173" target="_blank">→ Go to Login Page</a>
+                    </div>
+                `;
+                
+                // Refresh checks
+                await runChecks();
+                
+            } catch (error) {
+                outputDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error: ${error.message}<br>
+                        Code: ${error.code}<br><br>
+                        <strong>Common fixes:</strong><br>
+                        • Enable Email/Password authentication in Firebase Console<br>
+                        • Make sure Firestore is in test mode<br>
+                        • Check browser console for detailed errors
+                    </div>
+                `;
+                console.error('Full error:', error);
+            }
+        }
+
+        window.checkStatus = async function() {
+            await runChecks();
+            document.getElementById('output').innerHTML = '';
+        }
+
+        window.testLogin = async function() {
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '<div class="status loading">⏳ Testing login...</div>';
+            
+            try {
+                await signInWithEmailAndPassword(auth, 'admin@inventory.com', 'admin123');
+                outputDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Login successful!<br><br>
+                        Admin user is working correctly.<br>
+                        You can now <a href="http://localhost:5173" target="_blank">login to the application</a>
+                    </div>
+                `;
+            } catch (error) {
+                outputDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Login failed: ${error.message}<br>
+                        Code: ${error.code}
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize on page load
+        initialize();
+    </script>
+</body>
+</html>

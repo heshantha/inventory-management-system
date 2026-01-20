@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Test Shop - SmartStock POS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background: #4338CA;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success {
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #6EE7B7;
+        }
+
+        .error {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .info {
+            background: #DBEAFE;
+            color: #1E40AF;
+            border: 1px solid #93C5FD;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .credentials {
+            background: #F3F4F6;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .credentials strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        code {
+            background: #374151;
+            color: #F9FAFB;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏪 Create Test Shop</h1>
+        <p class="subtitle">Create a second shop to test multi-tenant isolation</p>
+
+        <div class="info">
+            <strong>📋 What this does:</strong>
+            <ul>
+                <li>Creates a new shop: "Tech Electronics"</li>
+                <li>Creates shop owner: Sarah Johnson</li>
+                <li>Assigns owner to the new shop</li>
+                <li>Allows testing data isolation between shops</li>
+            </ul>
+        </div>
+
+        <button id="createBtn" onclick="createTestShop()">Create Test Shop</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyANUn5n_N0wtyo_agpzOxLk_3SEhXMfCWk",
+            authDomain: "inventory-billing-system-3ab24.firebaseapp.com",
+            projectId: "inventory-billing-system-3ab24",
+            storageBucket: "inventory-billing-system-3ab24.firebasestorage.app",
+            messagingSenderId: "81706840264",
+            appId: "1:81706840264:web:a77714aa9cec653dfab5fd"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.createTestShop = async function () {
+            const btn = document.getElementById('createBtn');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            result.style.display = 'none';
+
+            try {
+                // Create Shop 2 - Electronics Store
+                const shop2Data = {
+                    name: "Tech Electronics",
+                    owner_name: "Sarah Johnson",
+                    business_type: "Electronics",
+                    location: "Kandy",
+                    address: "456 Station Rd, Kandy",
+                    phone: "+94 777 888 999",
+                    email: "owner@techelectronics.com",
+                    is_active: true,
+                    created_at: serverTimestamp()
+                };
+
+                const shop2Ref = await addDoc(collection(db, 'shops'), shop2Data);
+
+                // Create owner for Shop 2
+                const userCredential = await createUserWithEmailAndPassword(
+                    auth,
+                    'sarah@techelectronics.com',
+                    'sarah123'
+                );
+
+                await addDoc(collection(db, 'users'), {
+                    uid: userCredential.user.uid,
+                    username: 'sarahjohnson',
+                    full_name: 'Sarah Johnson',
+                    email: 'sarah@techelectronics.com',
+                    shop_id: shop2Ref.id,
+                    role: 'shop_owner',
+                    is_active: true,
+                    created_at: serverTimestamp()
+                });
+
+                result.className = 'result success';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <strong>✅ Test Shop Created Successfully!</strong>
+                    <div class="credentials">
+                        <strong>Login Credentials:</strong>
+                        Username: <code>sarahjohnson</code><br>
+                        Password: <code>sarah123</code><br><br>
+                        <strong>Shop Details:</strong><br>
+                        Name: Tech Electronics<br>
+                        ID: ${shop2Ref.id}<br>
+                        Location: Kandy
+                    </div>
+                    <p style="margin-top:15px;">
+                        <strong>Next steps:</strong><br>
+                        1. Logout from current session<br>
+                        2. Login with Sarah's credentials<br>
+                        3. Add some products to Tech Electronics<br>
+                        4. Verify the products don't appear in the main shop
+                    </p>
+                `;
+                btn.textContent = 'Shop Created ✓';
+
+            } catch (error) {
+                console.error('Error:', error);
+                result.className = 'result error';
+                result.style.display = 'block';
+
+                if (error.code === 'auth/email-already-in-use') {
+                    result.innerHTML = `
+                        <strong>❌ Shop Already Exists</strong>
+                        <p>A shop with this email already exists. Use these credentials:</p>
+                        <div class="credentials">
+                            Username: <code>sarahjohnson</code><br>
+                            Password: <code>sarah123</code>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <strong>❌ Error Creating Shop</strong>
+                        <p>${error.message}</p>
+                    `;
+                }
+
+                btn.disabled = false;
+                btn.textContent = 'Create Test Shop';
+            }
+        };
+    </script>
+</body>
+
+</html>

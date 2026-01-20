@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Admin User - SmartStock POS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background: #4338CA;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success {
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #6EE7B7;
+        }
+
+        .error {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .info {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1px solid #FCD34D;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        code {
+            background: #374151;
+            color: #F9FAFB;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Fix Admin User</h1>
+        <p class="subtitle">Update existing admin user to super_admin role</p>
+
+        <div class="info">
+            <strong>⚠️ What this does:</strong>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                <li>Finds the existing admin user</li>
+                <li>Updates role to <code>super_admin</code></li>
+                <li>Removes <code>shop_id</code> (super admins don't belong to shops)</li>
+            </ul>
+        </div>
+
+        <button id="fixBtn" onclick="fixAdminUser()">Fix Admin User Now</button>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs, updateDoc, doc, deleteField } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyANUn5n_N0wtyo_agpzOxLk_3SEhXMfCWk",
+            authDomain: "inventory-billing-system-3ab24.firebaseapp.com",
+            projectId: "inventory-billing-system-3ab24",
+            storageBucket: "inventory-billing-system-3ab24.firebasestorage.app",
+            messagingSenderId: "81706840264",
+            appId: "1:81706840264:web:a77714aa9cec653dfab5fd"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.fixAdminUser = async function () {
+            const btn = document.getElementById('fixBtn');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            btn.textContent = 'Fixing...';
+            result.style.display = 'none';
+
+            try {
+                // Find admin user
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('username', '==', 'admin'));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    result.className = 'result error';
+                    result.style.display = 'block';
+                    result.innerHTML = `
+                        <strong>❌ Admin User Not Found</strong>
+                        <p>No user with username "admin" exists in the database.</p>
+                    `;
+                    btn.disabled = false;
+                    btn.textContent = 'Fix Admin User Now';
+                    return;
+                }
+
+                // Update the admin user
+                const adminDoc = snapshot.docs[0];
+                const adminRef = doc(db, 'users', adminDoc.id);
+
+                await updateDoc(adminRef, {
+                    role: 'super_admin',
+                    shop_id: deleteField() // Remove shop_id field
+                });
+
+                result.className = 'result success';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <strong>✅ Admin User Fixed Successfully!</strong>
+                    <p style="margin-top: 10px;">The admin user has been updated:</p>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Role changed to <code>super_admin</code></li>
+                        <li><code>shop_id</code> removed</li>
+                    </ul>
+                    <p style="margin-top: 15px;">
+                        <strong>Next steps:</strong><br>
+                        1. Refresh your browser<br>
+                        2. Login again with <code>admin</code> / <code>admin123</code><br>
+                        3. You should now see "Super Admin" in the sidebar!
+                    </p>
+                `;
+
+                btn.textContent = 'Fixed ✓';
+
+            } catch (error) {
+                console.error('Error:', error);
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <strong>❌ Error Fixing Admin User</strong>
+                    <p>${error.message}</p>
+                `;
+
+                btn.disabled = false;
+                btn.textContent = 'Fix Admin User Now';
+            }
+        };
+    </script>
+</body>
+
+</html>
