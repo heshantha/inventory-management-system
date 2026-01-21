@@ -49,6 +49,18 @@ const MainLayout = ({ children }) => {
   );
 };
 
+// Role-based default redirect component
+const RoleBasedRedirect = () => {
+  const { user } = useAuth();
+
+  // Redirect cashiers to POS, others to Dashboard
+  if (user?.role === 'cashier') {
+    return <Navigate to="/pos" replace />;
+  }
+
+  return <Dashboard />;
+};
+
 // App Routes Component
 const AppRoutes = () => {
   return (
@@ -60,7 +72,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout>
-              <Dashboard />
+              <RoleBasedRedirect />
             </MainLayout>
           </ProtectedRoute>
         }

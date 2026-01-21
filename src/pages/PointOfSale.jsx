@@ -17,10 +17,13 @@ import {
     X,
     User,
     ArrowLeft,
+    LogOut,
+    UserCircle,
+    Package,
 } from 'lucide-react';
 
 const PointOfSale = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { shopId, currentShop } = useShop();
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
@@ -206,15 +209,50 @@ const PointOfSale = () => {
             <div className="bg-white border-b border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center text-gray-600 hover:text-gray-800"
-                            title="Back to Dashboard"
-                        >
-                            <ArrowLeft size={24} />
-                            <span className="ml-2 font-medium">Back to Menu</span>
-                        </button>
+                        {/* Only show Back to Menu for non-cashier users */}
+                        {user?.role !== 'cashier' && (
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center text-gray-600 hover:text-gray-800"
+                                title="Back to Dashboard"
+                            >
+                                <ArrowLeft size={24} />
+                                <span className="ml-2 font-medium">Back to Menu</span>
+                            </button>
+                        )}
                         <h1 className="text-2xl font-bold text-gray-800">Point of Sale</h1>
+                    </div>
+
+                    {/* User Info and Logout */}
+                    <div className="flex items-center space-x-4">
+                        {/* Products Button - Always visible */}
+                        <Button
+                            variant="primary"
+                            size="md"
+                            onClick={() => navigate('/products')}
+                            className="flex items-center space-x-2"
+                        >
+                            <Package size={18} />
+                            <span>Products</span>
+                        </Button>
+
+                        <div className="flex items-center space-x-3 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <UserCircle size={32} className="text-primary-600" />
+                            <div>
+                                <p className="font-semibold text-gray-800">{user?.full_name}</p>
+                                <p className="text-xs text-gray-600 capitalize">{user?.role?.replace('_', ' ')}</p>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="md"
+                            onClick={logout}
+                            className="flex items-center space-x-2"
+                        >
+                            <LogOut size={18} />
+                            <span>Logout</span>
+                        </Button>
                     </div>
                 </div>
             </div>

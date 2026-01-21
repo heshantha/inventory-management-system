@@ -29,14 +29,14 @@ const Sidebar = () => {
 
     // Shop Owner/Staff menu (hidden for super admins)
     const shopMenu = [
-        { path: '/', icon: LayoutDashboard, label: t('nav.dashboard'), roles: ['shop_owner', 'manager', 'cashier'] },
+        { path: '/', icon: LayoutDashboard, label: t('nav.dashboard'), roles: ['shop_owner', 'manager'] },
         { path: '/pos', icon: ShoppingCart, label: t('nav.pos'), roles: ['shop_owner', 'cashier'] },
-        { path: '/products', icon: Package, label: t('nav.products'), roles: ['shop_owner', 'manager'] },
+        { path: '/products', icon: Package, label: t('nav.products'), roles: ['shop_owner', 'manager', 'cashier'] },
         { path: '/customers', icon: Users, label: t('nav.customers'), roles: ['shop_owner', 'cashier', 'manager'] },
         { path: '/sales', icon: FileText, label: t('nav.sales'), roles: ['shop_owner', 'manager'] },
         { path: '/reports', icon: FileText, label: t('nav.reports'), roles: ['shop_owner', 'manager'] },
-        { path: '/categories', icon: FolderTree, label: t('nav.categories'), roles: ['shop_owner'] },
-        { path: '/suppliers', icon: TruckIcon, label: t('nav.suppliers'), roles: ['shop_owner'] },
+        { path: '/categories', icon: FolderTree, label: t('nav.categories'), roles: ['shop_owner', 'cashier'] },
+        { path: '/suppliers', icon: TruckIcon, label: t('nav.suppliers'), roles: ['shop_owner', 'cashier'] },
         { path: '/users', icon: UserPlus, label: t('nav.users'), roles: ['shop_owner'] },
     ];
 

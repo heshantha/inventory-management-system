@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Admin User - SmartStock POS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4F46E5;
+        }
+
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background: #4338CA;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .success {
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #6EE7B7;
+        }
+
+        .error {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .info {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1px solid #FCD34D;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        code {
+            background: #374151;
+            color: #F9FAFB;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Setup Admin User</h1>
+        <p class="subtitle">Create or update the super admin account for Supabase</p>
+
+        <div class="info">
+            <strong>⚠️ What this does:</strong>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                <li>Creates admin user in Supabase Auth</li>
+                <li>Creates admin record in users table with <code>super_admin</code> role</li>
+                <li>If admin exists, updates the password</li>
+            </ul>
+        </div>
+
+        <form id="setupForm" onsubmit="setupAdminUser(event)">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" value="admin" readonly>
+                <p class="help-text">Default admin username (cannot be changed)</p>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" value="admin@smartstockpos.com" required>
+                <p class="help-text">Admin email address for Supabase authentication</p>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" required minlength="6">
+                <p class="help-text">Minimum 6 characters. Remember this password!</p>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password *</label>
+                <input type="password" id="confirmPassword" required minlength="6">
+                <p class="help-text">Re-enter the password to confirm</p>
+            </div>
+
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" value="Super Administrator" required>
+            </div>
+
+            <button type="submit" id="setupBtn">Create/Update Admin User</button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = 'https://fcapcibgcwfehvvwjfre.supabase.co';
+        const supabaseServiceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjYXBjaWJnY3dmZWh2dndqZnJlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODgwMzYwMCwiZXhwIjoyMDg0Mzc5NjAwfQ.KC90ngTsudcbSQfSniv57lD6875Ykd5rLKhQBO5zGWY';
+
+        // Admin client for privileged operations
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
+
+        window.setupAdminUser = async function (event) {
+            event.preventDefault();
+
+            const btn = document.getElementById('setupBtn');
+            const result = document.getElementById('result');
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const email = document.getElementById('email').value;
+            const fullName = document.getElementById('fullName').value;
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <strong>❌ Password Mismatch</strong>
+                    <p>The passwords you entered do not match. Please try again.</p>
+                `;
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Setting up...';
+            result.style.display = 'none';
+
+            try {
+                console.log('🔍 Checking if admin user exists...');
+
+                // Check if admin user exists in users table
+                const { data: existingUsers, error: queryError } = await supabaseAdmin
+                    .from('users')
+                    .select('*')
+                    .eq('username', 'admin');
+
+                if (queryError) {
+                    console.error('Query error:', queryError);
+                    throw queryError;
+                }
+
+                let authUserId;
+
+                if (existingUsers && existingUsers.length > 0) {
+                    console.log('✅ Admin user found in database');
+                    const existingUser = existingUsers[0];
+                    authUserId = existingUser.auth_id;
+
+                    // Try to update password for existing auth user
+                    if (authUserId) {
+                        console.log('🔑 Updating password for existing auth user...');
+                        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                            authUserId,
+                            { password: password }
+                        );
+
+                        if (updateError) {
+                            console.error('Error updating password:', updateError);
+                            throw updateError;
+                        }
+                    } else {
+                        // No auth_id, create new auth user
+                        console.log('🆕 Creating new auth user...');
+                        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                            email: email,
+                            password: password,
+                            email_confirm: true,
+                            user_metadata: {
+                                username: 'admin',
+                                full_name: fullName
+                            }
+                        });
+
+                        if (authError) throw authError;
+                        authUserId = authData.user.id;
+
+                        // Update users table with auth_id
+                        await supabaseAdmin
+                            .from('users')
+                            .update({ auth_id: authUserId })
+                            .eq('id', existingUser.id);
+                    }
+
+                    // Update user details
+                    await supabaseAdmin
+                        .from('users')
+                        .update({
+                            full_name: fullName,
+                            email: email,
+                            role: 'super_admin',
+                            is_active: true
+                        })
+                        .eq('id', existingUser.id);
+
+                    result.className = 'result success';
+                    result.style.display = 'block';
+                    result.innerHTML = `
+                        <strong>✅ Admin User Updated Successfully!</strong>
+                        <p style="margin-top: 10px;">The admin user has been updated with new credentials.</p>
+                        <p style="margin-top: 15px;">
+                            <strong>Login Credentials:</strong><br>
+                            Username: <code>admin</code><br>
+                            Email: <code>${email}</code><br>
+                            Password: <code>${password}</code>
+                        </p>
+                        <p style="margin-top: 15px;">
+                            <strong>Next steps:</strong><br>
+                            1. Go to your application login page<br>
+                            2. Login with username <code>admin</code> and your new password<br>
+                            3. You should see "Super Admin" access!
+                        </p>
+                    `;
+
+                } else {
+                    console.log('🆕 Creating new admin user...');
+
+                    // Create new auth user
+                    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                        email: email,
+                        password: password,
+                        email_confirm: true,
+                        user_metadata: {
+                            username: 'admin',
+                            full_name: fullName
+                        }
+                    });
+
+                    if (authError) throw authError;
+                    authUserId = authData.user.id;
+
+                    // Create user record in database
+                    const { error: insertError } = await supabaseAdmin
+                        .from('users')
+                        .insert({
+                            auth_id: authUserId,
+                            username: 'admin',
+                            full_name: fullName,
+                            email: email,
+                            role: 'super_admin',
+                            is_active: true
+                        });
+
+                    if (insertError) throw insertError;
+
+                    result.className = 'result success';
+                    result.style.display = 'block';
+                    result.innerHTML = `
+                        <strong>✅ Admin User Created Successfully!</strong>
+                        <p style="margin-top: 10px;">The super admin user has been created.</p>
+                        <p style="margin-top: 15px;">
+                            <strong>Login Credentials:</strong><br>
+                            Username: <code>admin</code><br>
+                            Email: <code>${email}</code><br>
+                            Password: <code>${password}</code>
+                        </p>
+                        <p style="margin-top: 15px; color: #DC2626;">
+                            <strong>⚠️ IMPORTANT:</strong> Save these credentials in a safe place!
+                        </p>
+                        <p style="margin-top: 15px;">
+                            <strong>Next steps:</strong><br>
+                            1. Go to your application login page<br>
+                            2. Login with username <code>admin</code> and the password you set<br>
+                            3. You should see "Super Admin" access!
+                        </p>
+                    `;
+                }
+
+                btn.textContent = 'Done ✓';
+
+            } catch (error) {
+                console.error('Error:', error);
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `
+                    <strong>❌ Error Setting Up Admin User</strong>
+                    <p>${error.message || 'An unknown error occurred'}</p>
+                    <p style="margin-top: 10px; font-size: 13px;">Check browser console for more details.</p>
+                `;
+
+                btn.disabled = false;
+                btn.textContent = 'Create/Update Admin User';
+            }
+        };
+    </script>
+</body>
+
+</html>
