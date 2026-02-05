@@ -74,3 +74,20 @@ body {
     margin: 0;
   }
 }
+
+/* Global Touch Targets for Mobile/Tablet */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  min-height: 44px;
+}
+
+/* Ensure nice padding for inputs */
+input, select, textarea {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}

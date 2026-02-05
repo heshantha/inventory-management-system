@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
 import { useTranslation } from 'react-i18next';
 import {
     LayoutDashboard,
@@ -13,10 +14,13 @@ import {
     FolderTree,
     UserPlus,
     Shield,
+    Wrench,
+    Monitor,
 } from 'lucide-react';
 
 const Sidebar = () => {
     const { hasRole, user } = useAuth();
+    const { currentShop } = useShop();
     const { t } = useTranslation();
 
     // Super admin only sees super admin dashboard
@@ -40,19 +44,31 @@ const Sidebar = () => {
         { path: '/users', icon: UserPlus, label: t('nav.users'), roles: ['shop_owner'] },
     ];
 
+    // Add Garage menu item for Service Center shops only
+    const businessType = currentShop?.business_type?.toLowerCase();
+    if (businessType === 'service center' || businessType === 'garage') {
+        // Insert Garage after POS (index 2)
+        shopMenu.splice(2, 0, { path: '/garage', icon: Wrench, label: 'Garage', roles: ['shop_owner', 'cashier', 'manager'] });
+    }
+
+    // Add Repair Service menu for Computer Shop
+    if (currentShop?.business_type === 'Computer Shop' || currentShop?.business_type === 'Electronics') {
+        shopMenu.splice(2, 0, { path: '/repair-service', icon: Monitor, label: 'Repairs', roles: ['shop_owner', 'cashier'] });
+    }
+
     // Choose menu based on user type
     const menuItems = isSuperAdmin ? superAdminMenu : shopMenu;
     const filteredMenu = menuItems.filter(item => hasRole(item.roles));
 
     return (
-        <aside className="w-16 md:w-64 bg-gray-900 text-white min-h-screen flex flex-col">
+        <aside className="w-16 lg:w-64 bg-gray-900 text-white min-h-screen flex flex-col">
             {/* Logo */}
-            <div className="p-4 md:p-6 border-b border-gray-700">
-                <div className="flex items-center md:space-x-3">
+            <div className="p-4 lg:p-6 border-b border-gray-700">
+                <div className="flex items-center lg:space-x-3">
                     <div className="bg-primary-600 rounded-lg p-2">
                         <Package size={28} />
                     </div>
-                    <div className="hidden md:block">
+                    <div className="hidden lg:block">
                         <h1 className="text-xl font-bold">SmartStock POS</h1>
                         <p className="text-xs text-gray-400">Inventory System</p>
                     </div>
@@ -68,7 +84,7 @@ const Sidebar = () => {
                                 to={item.path}
                                 end={item.path === '/'}
                                 className={({ isActive }) =>
-                                    `flex items-center justify-center md:justify-start md:space-x-3 px-2 md:px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+                                    `flex items-center justify-center lg:justify-start lg:space-x-3 px-2 lg:px-4 py-3 rounded-lg transition-all duration-200 ${isActive
                                         ? 'bg-primary-600 text-white shadow-lg'
                                         : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`
@@ -76,7 +92,7 @@ const Sidebar = () => {
                                 title={item.label}
                             >
                                 <item.icon size={20} />
-                                <span className="hidden md:inline font-medium">{item.label}</span>
+                                <span className="hidden lg:inline font-medium">{item.label}</span>
                             </NavLink>
                         </li>
                     ))}
@@ -85,7 +101,7 @@ const Sidebar = () => {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-700">
-                <p className="text-xs text-gray-500 text-center hidden md:block">
+                <p className="text-xs text-gray-500 text-center hidden lg:block">
                     Version 1.0.0
                 </p>
             </div>

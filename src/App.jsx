@@ -14,6 +14,8 @@ import Reports from './pages/Reports';
 import Categories from './pages/Categories';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
+import Garage from './pages/Garage';
+import RepairService from './pages/RepairService';
 import SuperAdminDashboard from './pages/SuperAdmin/SuperAdminDashboard';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
@@ -159,6 +161,28 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Users />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/garage"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Garage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/repair-service"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RepairService />
             </MainLayout>
           </ProtectedRoute>
         }

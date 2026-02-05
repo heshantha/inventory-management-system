@@ -372,96 +372,180 @@ const PointOfSale = () => {
                 {/* Left Panel - Product Selection */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Search with Autocomplete */}
-                    <div className="mb-4 relative p-4 pb-0" ref={dropdownRef}>
-                        <div className="flex gap-2 items-center">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        setShowDropdown(e.target.value.length > 0);
-                                    }}
-                                    onFocus={() => {
-                                        if (searchTerm.length > 0) {
-                                            setShowDropdown(true);
-                                        }
-                                    }}
-                                    placeholder="Search products by name or SKU..."
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                />
+                    {/* Search Area - Responsive Grid */}
+                    <div className="flex flex-col lg:flex-row gap-4 p-4 pb-0">
+                        {/* Product Search */}
+                        <div className="w-full lg:w-[70%] relative" ref={dropdownRef}>
+                            <label className="block text-xs font-medium text-gray-700 mb-1 lg:hidden">
+                                Search Products
+                            </label>
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                    <input
+                                        ref={searchInputRef}
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(e) => {
+                                            setSearchTerm(e.target.value);
+                                            setShowDropdown(e.target.value.length > 0);
+                                        }}
+                                        onFocus={() => {
+                                            if (searchTerm.length > 0) {
+                                                setShowDropdown(true);
+                                            }
+                                        }}
+                                        placeholder="Search products by name or SKU..."
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    />
+                                </div>
+                                {cart.length > 0 && (
+                                    <Button variant="secondary" size="sm" onClick={clearCart} className="whitespace-nowrap">
+                                        Clear All
+                                    </Button>
+                                )}
                             </div>
-                            {cart.length > 0 && (
-                                <Button variant="secondary" size="sm" onClick={clearCart} className="whitespace-nowrap">
-                                    Clear All
-                                </Button>
+
+                            {/* Product Dropdown */}
+                            {showDropdown && searchTerm && (
+                                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                                    {filteredProducts.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500">
+                                            <Package size={32} className="mx-auto mb-2 opacity-50" />
+                                            <p className="text-sm">No products found</p>
+                                        </div>
+                                    ) : (
+                                        <div className="py-1">
+                                            {filteredProducts.map((product) => (
+                                                <button
+                                                    key={product.id}
+                                                    onClick={() => addToCart(product)}
+                                                    disabled={product.stock_quantity <= 0}
+                                                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition-colors ${product.stock_quantity <= 0
+                                                        ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                                                        : 'cursor-pointer'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-semibold text-gray-800">
+                                                                    {product.name}
+                                                                </h4>
+                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                    {product.sku}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 mt-1">
+                                                                <span className="text-sm font-bold text-primary-600">
+                                                                    {formatCurrency(product.selling_price)}
+                                                                </span>
+                                                                <span
+                                                                    className={`text-xs px-2 py-0.5 rounded font-medium ${product.stock_quantity <= 0
+                                                                        ? 'bg-red-100 text-red-700'
+                                                                        : product.stock_quantity < 10
+                                                                            ? 'bg-yellow-100 text-yellow-700'
+                                                                            : 'bg-green-100 text-green-700'
+                                                                        }`}
+                                                                >
+                                                                    {product.stock_quantity <= 0
+                                                                        ? 'Out of Stock'
+                                                                        : `Stock: ${product.stock_quantity}`}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {product.stock_quantity > 0 && (
+                                                            <Plus size={20} className="text-primary-600 ml-2" />
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
 
-                        {/* Autocomplete Dropdown */}
-                        {showDropdown && searchTerm && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto left-4 right-4">
-                                {filteredProducts.length === 0 ? (
-                                    <div className="p-4 text-center text-gray-500">
-                                        <Package size={32} className="mx-auto mb-2 opacity-50" />
-                                        <p className="text-sm">No products found</p>
-                                    </div>
-                                ) : (
-                                    <div className="py-1">
-                                        {filteredProducts.map((product) => (
-                                            <button
-                                                key={product.id}
-                                                onClick={() => addToCart(product)}
-                                                disabled={product.stock_quantity <= 0}
-                                                className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition-colors ${product.stock_quantity <= 0
-                                                    ? 'opacity-50 cursor-not-allowed bg-gray-50'
-                                                    : 'cursor-pointer'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-semibold text-gray-800">
-                                                                {product.name}
-                                                            </h4>
-                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                                {product.sku}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-sm font-bold text-primary-600">
-                                                                {formatCurrency(product.selling_price)}
-                                                            </span>
-                                                            <span
-                                                                className={`text-xs px-2 py-0.5 rounded font-medium ${product.stock_quantity <= 0
-                                                                    ? 'bg-red-100 text-red-700'
-                                                                    : product.stock_quantity < 10
-                                                                        ? 'bg-yellow-100 text-yellow-700'
-                                                                        : 'bg-green-100 text-green-700'
-                                                                    }`}
-                                                            >
-                                                                {product.stock_quantity <= 0
-                                                                    ? 'Out of Stock'
-                                                                    : `Stock: ${product.stock_quantity}`}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    {product.stock_quantity > 0 && (
-                                                        <Plus size={20} className="text-primary-600 ml-2" />
-                                                    )}
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
+                        {/* Customer Search - Right Side */}
+                        <div className="w-full lg:w-[30%] relative" ref={customerDropdownRef}>
+                            <label className="block text-xs font-medium text-gray-700 mb-1 lg:hidden">
+                                Customer
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    value={selectedCustomer ? selectedCustomer.name : customerSearchTerm}
+                                    onChange={(e) => {
+                                        setCustomerSearchTerm(e.target.value);
+                                        setShowCustomerDropdown(true);
+                                        if (!e.target.value) {
+                                            setSelectedCustomer(null);
+                                        }
+                                    }}
+                                    onFocus={() => {
+                                        setShowCustomerDropdown(true);
+                                    }}
+                                    placeholder="Search Customer..."
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                />
+                                {selectedCustomer && (
+                                    <button
+                                        onClick={() => {
+                                            setSelectedCustomer(null);
+                                            setCustomerSearchTerm('');
+                                        }}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                    >
+                                        <X size={16} />
+                                    </button>
                                 )}
                             </div>
-                        )}
+
+                            {/* Customer Dropdown */}
+                            {showCustomerDropdown && (
+                                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {/* Walk-in Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedCustomer(null);
+                                            setCustomerSearchTerm('');
+                                            setShowCustomerDropdown(false);
+                                        }}
+                                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-sm"
+                                    >
+                                        <div className="font-medium text-gray-700">Walk-in Customer</div>
+                                    </button>
+
+                                    {/* Filtered Customers */}
+                                    {customers
+                                        .filter(c =>
+                                            c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+                                            c.phone.toLowerCase().includes(customerSearchTerm.toLowerCase())
+                                        )
+                                        .map((customer) => (
+                                            <button
+                                                key={customer.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedCustomer(customer);
+                                                    setCustomerSearchTerm('');
+                                                    setShowCustomerDropdown(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-sm"
+                                            >
+                                                <div className="font-medium text-gray-800">{customer.name}</div>
+                                                <div className="text-xs text-gray-500">{customer.phone}</div>
+                                            </button>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Cart Items Display */}
-                    <div className="flex-1 overflow-y-auto px-4">
+                    <div className="flex-1 overflow-y-auto px-4 py-4">
                         {cart.length === 0 ? (
                             <div className="text-center py-12 text-gray-400">
                                 <ShoppingCart size={48} className="mx-auto mb-2 opacity-50" />
@@ -537,79 +621,8 @@ const PointOfSale = () => {
                     {cart.length > 0 && (
                         <div className="flex-shrink-0 border-t-2 border-gray-300 bg-white shadow-lg">
                             <div className="p-3">
-                                {/* First Row - Customer, Bill Discount, Tax, Warranty, Payment */}
-                                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-2">
-                                    {/* Customer Selection */}
-                                    <div className="relative" ref={customerDropdownRef}>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Customer
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={selectedCustomer ? selectedCustomer.name : customerSearchTerm}
-                                            onChange={(e) => {
-                                                setCustomerSearchTerm(e.target.value);
-                                                setShowCustomerDropdown(true);
-                                                if (!e.target.value) {
-                                                    setSelectedCustomer(null);
-                                                }
-                                            }}
-                                            onFocus={() => {
-                                                setShowCustomerDropdown(true);
-                                            }}
-                                            placeholder="Walk-in or search..."
-                                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                        />
-
-                                        {/* Customer Dropdown */}
-                                        {showCustomerDropdown && (
-                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                                {/* Walk-in Option */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelectedCustomer(null);
-                                                        setCustomerSearchTerm('');
-                                                        setShowCustomerDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-sm"
-                                                >
-                                                    <div className="font-medium text-gray-700">Walk-in Customer</div>
-                                                </button>
-
-                                                {/* Filtered Customers */}
-                                                {customers
-                                                    .filter(c =>
-                                                        c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                                                        c.phone.toLowerCase().includes(customerSearchTerm.toLowerCase())
-                                                    )
-                                                    .map((customer) => (
-                                                        <button
-                                                            key={customer.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setSelectedCustomer(customer);
-                                                                setCustomerSearchTerm('');
-                                                                setShowCustomerDropdown(false);
-                                                            }}
-                                                            className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-sm"
-                                                        >
-                                                            <div className="font-medium text-gray-800">{customer.name}</div>
-                                                            <div className="text-xs text-gray-500">{customer.phone}</div>
-                                                        </button>
-                                                    ))}
-
-                                                {customers.filter(c =>
-                                                    c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                                                    c.phone.toLowerCase().includes(customerSearchTerm.toLowerCase())
-                                                ).length === 0 && customerSearchTerm && (
-                                                        <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                                                            No customers found
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        )}
-                                    </div>
+                                {/* First Row - Bill Discount, Tax, Warranty, Payment */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
 
                                     {/* Bill Discount */}
                                     <div>
@@ -725,24 +738,24 @@ const PointOfSale = () => {
 
             {/* Receipt Modal - Conditional based on shop type */}
             {showReceipt && currentInvoice && (
-                <Modal
-                    isOpen={showReceipt}
-                    onClose={() => setShowReceipt(false)}
-                    title={currentShop?.business_type === 'Computer Shop' ? 'Invoice' : 'Thermal Receipt'}
-                    size={currentShop?.business_type === 'Computer Shop' ? 'xl' : 'lg'}
-                >
-                    {currentShop?.business_type === 'Computer Shop' ? (
-                        <Invoice
-                            invoice={currentInvoice}
-                            onClose={() => setShowReceipt(false)}
-                        />
-                    ) : (
+                currentShop?.business_type === 'Computer Shop' ? (
+                    <Invoice
+                        invoice={currentInvoice}
+                        onClose={() => setShowReceipt(false)}
+                    />
+                ) : (
+                    <Modal
+                        isOpen={showReceipt}
+                        onClose={() => setShowReceipt(false)}
+                        title="Thermal Receipt"
+                        size="lg"
+                    >
                         <ThermalReceipt
                             invoice={currentInvoice}
                             onClose={() => setShowReceipt(false)}
                         />
-                    )}
-                </Modal>
+                    </Modal>
+                )
             )}
         </div>
     );

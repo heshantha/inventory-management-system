@@ -64,6 +64,14 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await supabaseService.logout();
+
+            // Clear POS data on logout to prevent data persistence between users
+            localStorage.removeItem('pos_cart');
+            localStorage.removeItem('pos_bill_discount');
+            localStorage.removeItem('pos_tax_rate');
+            localStorage.removeItem('pos_warranty');
+            localStorage.removeItem('pos_payment_method');
+
             setUser(null);
         } catch (error) {
             console.error('Logout error:', error);

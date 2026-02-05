@@ -20,6 +20,7 @@ const Reports = () => {
     const [sales, setSales] = useState([]);
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [activeTab, setActiveTab] = useState('pos'); // 'pos' or 'repairs'
     const [dateRange, setDateRange] = useState('month'); // today, week, month, all
     const [stats, setStats] = useState({
         totalRevenue: 0,
@@ -42,7 +43,7 @@ const Reports = () => {
         if (sales.length > 0 || products.length > 0) {
             calculateReports();
         }
-    }, [sales, products, dateRange]);
+    }, [sales, products, dateRange, activeTab]);
 
     const loadData = async () => {
         const [salesData, productsData, customersData] = await Promise.all([
@@ -53,6 +54,16 @@ const Reports = () => {
         setSales(salesData);
         setProducts(productsData);
         setCustomers(customersData);
+    };
+
+    const isRepairSale = (sale) => {
+        return sale.items && sale.items.some(item =>
+            (item.name && item.name.toString().includes('Service Charges')) ||
+            (item.name && item.name.toString().startsWith('Device:')) ||
+            (item.name && item.name.toString().startsWith('Vehicle:')) ||
+            (item.name === 'Labour / Technician Fee') ||
+            (item.name === 'Labour Charges')
+        );
     };
 
     const filterSalesByDateRange = () => {
@@ -77,7 +88,14 @@ const Reports = () => {
     };
 
     const calculateReports = () => {
-        const filteredSales = filterSalesByDateRange();
+        let filteredSales = filterSalesByDateRange();
+
+        // Filter by Tab
+        if (activeTab === 'pos') {
+            filteredSales = filteredSales.filter(sale => !isRepairSale(sale));
+        } else {
+            filteredSales = filteredSales.filter(sale => isRepairSale(sale));
+        }
 
         // Revenue and sales stats
         const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total_amount, 0);
@@ -91,18 +109,26 @@ const Reports = () => {
         filteredSales.forEach(sale => {
             if (sale.items) {
                 sale.items.forEach(item => {
-                    if (!productSales[item.product_id]) {
+                    // For Repairs tab, we might want to aggregate Service Types?
+                    // But current logic aggregates by product_id OR item name if product_id is null
+                    // If product_id is null (Service Charges), we key by item name?
+
+                    const key = item.product_id || item.name;
+
+                    if (!productSales[key]) {
                         // Find product details from products array
                         const product = products.find(p => p.id === item.product_id);
-                        productSales[item.product_id] = {
+                        productSales[key] = {
                             product_id: item.product_id,
-                            name: product?.name || 'Unknown Product',
+                            name: product?.name || item.name || 'Unknown Item',
                             quantity: 0,
                             revenue: 0,
                         };
                     }
-                    productSales[item.product_id].quantity += item.quantity;
-                    productSales[item.product_id].revenue += item.total_price || (item.quantity * item.unit_price);
+                    productSales[key].quantity += item.quantity;
+                    // Ensure numbers
+                    const itemTotal = parseFloat(item.total_price) || (parseFloat(item.quantity) * parseFloat(item.unit_price)) || 0;
+                    productSales[key].revenue += itemTotal;
                 });
             }
         });
@@ -111,7 +137,8 @@ const Reports = () => {
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5);
 
-        // Low stock products
+        // Low stock products (Only relevant for POS/Inventory context, but keeping global is fine)
+        // Or should we filter? Low stock is store-wide. Keep it as is.
         const lowStockProducts = products
             .filter(p => p.stock_quantity <= p.min_stock_level)
             .sort((a, b) => a.stock_quantity - b.stock_quantity)
@@ -163,8 +190,11 @@ const Reports = () => {
         };
 
         const dateRangeLabel = getDateRangeLabel();
+        const reportTitle = activeTab === 'repairs'
+            ? (currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' ? 'Garage Report' : 'Repair Report')
+            : 'Sales Report';
 
-        downloadSalesReportPDF(reportData, dateRangeLabel, currentShop);
+        downloadSalesReportPDF(reportData, dateRangeLabel, currentShop, reportTitle);
     };
 
     return (
@@ -173,6 +203,30 @@ const Reports = () => {
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-800">Reports & Analytics</h1>
                 <p className="text-gray-600 mt-1">Business insights and performance metrics</p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6 max-w-md">
+                <button
+                    onClick={() => setActiveTab('pos')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'pos'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                >
+                    Sales Reports
+                </button>
+                <button
+                    onClick={() => setActiveTab('repairs')}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === 'repairs'
+                        ? 'bg-white text-primary-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                >
+                    {currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage'
+                        ? 'Garage Reports'
+                        : 'Repair Reports'}
+                </button>
             </div>
 
             {/* Date Range Filter */}
@@ -352,32 +406,7 @@ const Reports = () => {
                 )}
             </div>
 
-            {/* Database Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm p-6 text-white">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm opacity-90">Total Products</span>
-                        <Package size={24} className="opacity-75" />
-                    </div>
-                    <p className="text-3xl font-bold">{products.length}</p>
-                </div>
 
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-sm p-6 text-white">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm opacity-90">Total Customers</span>
-                        <Users size={24} className="opacity-75" />
-                    </div>
-                    <p className="text-3xl font-bold">{customers.length}</p>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-sm p-6 text-white">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm opacity-90">Total Tax Collected</span>
-                        <DollarSign size={24} className="opacity-75" />
-                    </div>
-                    <p className="text-3xl font-bold">{formatCurrency(stats.totalTax)}</p>
-                </div>
-            </div>
         </div>
     );
 };

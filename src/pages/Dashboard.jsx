@@ -10,6 +10,7 @@ import {
     Users,
     AlertTriangle,
     TrendingUp,
+    Wrench
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -41,9 +42,28 @@ const Dashboard = () => {
                 api.sales.getToday(shopId),
             ]);
 
-            setStats(statsData);
+            // Separate Sales and Repairs
+            // Repairs are identified by having an item named "Service Charges..."
+            const repairs = todaySales.filter(sale =>
+                sale.items && sale.items.some(item => item.name && item.name.toString().startsWith('Service Charges'))
+            );
+
+            const salesOnly = todaySales.filter(sale =>
+                !sale.items || !sale.items.some(item => item.name && item.name.toString().startsWith('Service Charges'))
+            );
+
+            // Calculate Totals
+            const repairTotal = repairs.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
+            const salesTotal = salesOnly.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
+
+            setStats({
+                ...statsData,
+                today_sales_only: salesTotal,
+                today_repair_amount: repairTotal,
+                today_transactions_count: todaySales.length
+            });
             setLowStockProducts(lowStock.slice(0, 5));
-            setRecentSales(todaySales.slice(0, 10));
+            setRecentSales(salesOnly.slice(0, 5));
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
@@ -62,14 +82,21 @@ const Dashboard = () => {
     const statCards = [
         {
             title: "Today's Sales",
-            value: formatCurrency(stats?.today_sales || 0),
+            value: formatCurrency(stats?.today_sales_only || 0),
             icon: DollarSign,
             color: 'bg-green-500',
             textColor: 'text-green-600',
         },
         {
+            title: "Today's Repair Amount",
+            value: formatCurrency(stats?.today_repair_amount || 0),
+            icon: TrendingUp, // Using TrendingUp or Wrench if imported
+            color: 'bg-indigo-500',
+            textColor: 'text-indigo-600',
+        },
+        {
             title: "Today's Transactions",
-            value: stats?.today_transactions || 0,
+            value: stats?.today_transactions_count || 0,
             icon: ShoppingCart,
             color: 'bg-blue-500',
             textColor: 'text-blue-600',
@@ -80,13 +107,6 @@ const Dashboard = () => {
             icon: Package,
             color: 'bg-purple-500',
             textColor: 'text-purple-600',
-        },
-        {
-            title: 'Total Customers',
-            value: stats?.total_customers || 0,
-            icon: Users,
-            color: 'bg-indigo-500',
-            textColor: 'text-indigo-600',
         },
     ];
 

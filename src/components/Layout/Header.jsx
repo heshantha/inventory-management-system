@@ -39,7 +39,7 @@ const Header = () => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <LanguageSwitcher />
+                    {/* <LanguageSwitcher /> */}
 
                     <div className="flex items-center space-x-3 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
                         <UserCircle size={32} className="text-primary-600" />

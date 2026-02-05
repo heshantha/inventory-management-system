@@ -4,7 +4,7 @@ import api from '../services/api';
 import { formatCurrency } from '../utils/calculations';
 import Modal from '../components/common/Modal';
 import Invoice from '../components/Invoice/Invoice';
-import { Search, Eye, Calendar, DollarSign, ShoppingBag, Printer, Filter } from 'lucide-react';
+import { Search, Eye, Calendar, DollarSign, ShoppingBag, Printer, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sales = () => {
     const { shopId } = useShop();
@@ -14,6 +14,11 @@ const Sales = () => {
     const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showInvoice, setShowInvoice] = useState(false);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
     const [stats, setStats] = useState({
         totalSales: 0,
         totalTransactions: 0,
@@ -83,7 +88,12 @@ const Sales = () => {
         }
 
         setFilteredSales(filtered);
+        setStats(prev => ({ // keep prev if needed, but we overwrite properties
+            // Actually calculateStats overwrites stats, so...
+            ...prev
+        }));
         calculateStats(filtered);
+        setCurrentPage(1); // Reset to first page on filter change
     };
 
     const viewInvoice = (sale) => {
@@ -220,81 +230,95 @@ const Sales = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredSales.map((sale) => (
-                                    <tr key={sale.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="font-medium text-gray-900">{sale.invoice_number}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {new Date(sale.created_at).toLocaleDateString()}
-                                            </div>
-                                            <div className="text-xs text-gray-500">
-                                                {new Date(sale.created_at).toLocaleTimeString()}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                {sale.items?.length || 0} item(s)
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase ${getPaymentMethodBadgeColor(sale.payment_method)}`}>
-                                                {sale.payment_method}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-semibold text-gray-900">
-                                                {formatCurrency(sale.total_amount)}
-                                            </div>
-                                            {sale.discount_amount > 0 && (
-                                                <div className="text-xs text-red-600">
-                                                    Discount: {formatCurrency(sale.discount_amount)}
+                                filteredSales
+                                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                    .map((sale) => (
+                                        <tr key={sale.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="font-medium text-gray-900">{sale.invoice_number}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-900">
+                                                    {new Date(sale.created_at).toLocaleDateString()}
                                                 </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button
-                                                onClick={() => viewInvoice(sale)}
-                                                className="text-primary-600 hover:text-primary-900 inline-flex items-center"
-                                            >
-                                                <Eye size={18} className="mr-1" />
-                                                View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
+                                                <div className="text-xs text-gray-500">
+                                                    {new Date(sale.created_at).toLocaleTimeString()}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-900">
+                                                    {sale.items?.length || 0} item(s)
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase ${getPaymentMethodBadgeColor(sale.payment_method)}`}>
+                                                    {sale.payment_method}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-semibold text-gray-900">
+                                                    {formatCurrency(sale.total_amount)}
+                                                </div>
+                                                {sale.discount_amount > 0 && (
+                                                    <div className="text-xs text-red-600">
+                                                        Discount: {formatCurrency(sale.discount_amount)}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <button
+                                                    onClick={() => viewInvoice(sale)}
+                                                    className="text-primary-600 hover:text-primary-900 inline-flex items-center"
+                                                >
+                                                    <Eye size={18} className="mr-1" />
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
                             )}
                         </tbody>
                     </table>
                 </div>
-            </div>
 
+                {/* Pagination Controls */}
+                {filteredSales.length > itemsPerPage && (
+                    <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+                        <div className="text-sm text-gray-500">
+                            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredSales.length)}</span> of <span className="font-medium">{filteredSales.length}</span> results
+                        </div>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className={`px-3 py-1 rounded-md border text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+
+                            <div className="flex items-center space-x-1">
+                                <span className="px-4 py-2 text-sm text-gray-700">
+                                    Page {currentPage} of {Math.ceil(filteredSales.length / itemsPerPage)}
+                                </span>
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredSales.length / itemsPerPage)))}
+                                disabled={currentPage === Math.ceil(filteredSales.length / itemsPerPage)}
+                                className={`px-3 py-1 rounded-md border text-sm font-medium ${currentPage === Math.ceil(filteredSales.length / itemsPerPage) ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
             {/* Invoice Modal */}
             {showInvoice && selectedInvoice && (
-                <Modal
-                    isOpen={showInvoice}
+                <Invoice
+                    invoice={selectedInvoice}
                     onClose={() => setShowInvoice(false)}
-                    title="Invoice Details"
-                    size="xl"
-                >
-                    <Invoice invoice={selectedInvoice} />
-                    <div className="flex justify-center space-x-3 mt-6 pt-6 border-t border-gray-200 no-print">
-                        <button
-                            onClick={() => window.print()}
-                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 inline-flex items-center"
-                        >
-                            <Printer size={18} className="mr-2" />
-                            Print Invoice
-                        </button>
-                        <button
-                            onClick={() => setShowInvoice(false)}
-                            className="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </Modal>
+                />
             )}
         </div>
     );
