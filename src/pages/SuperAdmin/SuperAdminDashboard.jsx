@@ -49,6 +49,7 @@ const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
                 <option value="Shop Shop">Shop Shop</option>
                 <option value="Hardware Shop">Hardware Shop</option>
                 <option value="Pharmacy Shop">Pharmacy Shop</option>
+                <option value="Service Center">Service Center</option>
             </select>
         </div>
 

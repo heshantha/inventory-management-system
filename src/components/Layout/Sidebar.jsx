@@ -45,14 +45,14 @@ const Sidebar = () => {
     const filteredMenu = menuItems.filter(item => hasRole(item.roles));
 
     return (
-        <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
+        <aside className="w-16 md:w-64 bg-gray-900 text-white min-h-screen flex flex-col">
             {/* Logo */}
-            <div className="p-6 border-b border-gray-700">
-                <div className="flex items-center space-x-3">
+            <div className="p-4 md:p-6 border-b border-gray-700">
+                <div className="flex items-center md:space-x-3">
                     <div className="bg-primary-600 rounded-lg p-2">
                         <Package size={28} />
                     </div>
-                    <div>
+                    <div className="hidden md:block">
                         <h1 className="text-xl font-bold">SmartStock POS</h1>
                         <p className="text-xs text-gray-400">Inventory System</p>
                     </div>
@@ -68,14 +68,15 @@ const Sidebar = () => {
                                 to={item.path}
                                 end={item.path === '/'}
                                 className={({ isActive }) =>
-                                    `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+                                    `flex items-center justify-center md:justify-start md:space-x-3 px-2 md:px-4 py-3 rounded-lg transition-all duration-200 ${isActive
                                         ? 'bg-primary-600 text-white shadow-lg'
                                         : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                     }`
                                 }
+                                title={item.label}
                             >
                                 <item.icon size={20} />
-                                <span className="font-medium">{item.label}</span>
+                                <span className="hidden md:inline font-medium">{item.label}</span>
                             </NavLink>
                         </li>
                     ))}
@@ -84,7 +85,7 @@ const Sidebar = () => {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-700">
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-gray-500 text-center hidden md:block">
                     Version 1.0.0
                 </p>
             </div>
