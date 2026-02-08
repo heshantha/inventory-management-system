@@ -79,7 +79,7 @@ const Sidebar = () => {
             <nav className="flex-1 p-4">
                 <ul className="space-y-2">
                     {filteredMenu.map((item) => (
-                        <li key={item.path}>
+                        <li key={item.path} className="relative group">
                             <NavLink
                                 to={item.path}
                                 end={item.path === '/'}
@@ -94,6 +94,12 @@ const Sidebar = () => {
                                 <item.icon size={20} />
                                 <span className="hidden lg:inline font-medium">{item.label}</span>
                             </NavLink>
+                            {/* Tooltip for mobile/tablet - shows on hover */}
+                            <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 lg:hidden">
+                                {item.label}
+                                {/* Arrow pointing left */}
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
+                            </div>
                         </li>
                     ))}
                 </ul>
