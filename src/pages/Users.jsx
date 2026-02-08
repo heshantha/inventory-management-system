@@ -163,18 +163,19 @@ const Users = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-3 md:p-6">
             {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Users Management</h1>
-                    <p className="text-gray-600 mt-1">Manage system users and permissions</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 mb-6">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">Users Management</h1>
+                    <p className="text-sm md:text-base text-gray-600 mt-1">Manage system users and permissions</p>
                 </div>
-                <Button onClick={() => handleOpenModal()} style={{
-                    display: 'flex'
-                }}>
+                <Button
+                    onClick={() => handleOpenModal()}
+                    className="w-full md:w-auto flex items-center justify-center"
+                >
                     <UserPlus size={18} className="mr-2" />
-                    Add User
+                    <span>Add User</span>
                 </Button>
             </div>
 

@@ -198,11 +198,11 @@ const Reports = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-3 md:p-6">
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Reports & Analytics</h1>
-                <p className="text-gray-600 mt-1">Business insights and performance metrics</p>
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">Reports & Analytics</h1>
+                <p className="text-sm md:text-base text-gray-600 mt-1">Business insights and performance metrics</p>
             </div>
 
             {/* Tabs */}
@@ -230,17 +230,19 @@ const Reports = () => {
             </div>
 
             {/* Date Range Filter */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <Calendar className="text-gray-400" size={20} />
-                        <span className="text-sm font-medium text-gray-700">Date Range:</span>
-                        <div className="flex space-x-2">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 md:p-4 mb-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="text-gray-400" size={20} />
+                            <span className="text-sm font-medium text-gray-700">Date Range:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                             {['today', 'week', 'month', 'all'].map((range) => (
                                 <button
                                     key={range}
                                     onClick={() => setDateRange(range)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateRange === range
+                                    className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors ${dateRange === range
                                         ? 'bg-primary-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                         }`}
@@ -255,7 +257,7 @@ const Reports = () => {
                     </div>
                     <button
                         onClick={handleDownloadPDF}
-                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm w-full md:w-auto"
                     >
                         <Download size={18} />
                         <span>Download PDF</span>

@@ -367,17 +367,17 @@ const RepairService = () => {
     const totals = calculateTotals();
 
     return (
-        <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-gray-50">
             {/* Header */}
-            <div className="mb-6 p-6 pb-0">
-                <h1 className="text-3xl font-bold text-gray-800 flex items-center">
-                    <Monitor className="mr-3" size={32} />
+            <div className="mb-4 md:mb-6 p-3 md:p-6 pb-0">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 flex items-center">
+                    <Monitor className="mr-2 md:mr-3" size={24} />
                     Repair & Service Job
                 </h1>
-                <p className="text-gray-600 mt-1">Manage device repairs and service jobs</p>
+                <p className="text-sm md:text-base text-gray-600 mt-1">Manage device repairs and service jobs</p>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto px-6">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 px-3 md:px-6 pb-6">
                 {/* Left Panel - Repair Details */}
                 <div className="lg:col-span-2 space-y-6 pb-6">
                     {/* Repair Information */}
@@ -638,8 +638,8 @@ const RepairService = () => {
                 </div>
 
                 {/* Right Panel - Pricing & Summary */}
-                <div className="lg:w-3/3 flex flex-col gap-6 overflow-y-auto pr-2 pb-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-0">
+                <div className="flex flex-col gap-4 md:gap-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 lg:sticky lg:top-0">
                         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
 
                             Pricing Summary
@@ -765,61 +765,65 @@ const RepairService = () => {
             </div>
 
             {/* Service Invoice Modal */}
-            {showInvoice && invoiceData && (
-                <ServiceInvoice
-                    serviceData={invoiceData}
-                    shopData={currentShop}
-                    customerData={invoiceCustomerData}
-                    onClose={() => setShowInvoice(false)}
-                    type="repair"
-                />
-            )}
+            {
+                showInvoice && invoiceData && (
+                    <ServiceInvoice
+                        serviceData={invoiceData}
+                        shopData={currentShop}
+                        customerData={invoiceCustomerData}
+                        onClose={() => setShowInvoice(false)}
+                        type="repair"
+                    />
+                )
+            }
 
             {/* Add Service Type Modal */}
-            {showAddServiceModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Add New Repair Type</h2>
+            {
+                showAddServiceModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">Add New Repair Type</h2>
 
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Repair Type Name
-                            </label>
-                            <input
-                                type="text"
-                                value={newServiceType}
-                                onChange={(e) => setNewServiceType(e.target.value)}
-                                onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleAddServiceType();
-                                    }
-                                }}
-                                placeholder="e.g., Chip Replacement"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                autoFocus
-                            />
-                        </div>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Repair Type Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newServiceType}
+                                    onChange={(e) => setNewServiceType(e.target.value)}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleAddServiceType();
+                                        }
+                                    }}
+                                    placeholder="e.g., Chip Replacement"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                    autoFocus
+                                />
+                            </div>
 
-                        <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => {
-                                    setShowAddServiceModal(false);
-                                    setNewServiceType('');
-                                }}
-                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAddServiceType}
-                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                            >
-                                Add Type
-                            </button>
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={() => {
+                                        setShowAddServiceModal(false);
+                                        setNewServiceType('');
+                                    }}
+                                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddServiceType}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                                >
+                                    Add Type
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             {/* Add Device Type Modal */}
             {
                 showAddDeviceTypeModal && (

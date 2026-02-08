@@ -81,24 +81,24 @@ const Customers = () => {
     };
 
     return (
-        <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold text-gray-800">Customers Management</h1>
+        <div className="p-3 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 mb-6">
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">Customers Management</h1>
                         {currentShop && (() => {
                             const usageInfo = getUsageInfo(customers.length, currentShop.package_type, 'customers');
                             return !usageInfo.isUnlimited && (
-                                <span className={`text-sm px-3 py-1 rounded-full ${usageInfo.percentage >= 100 ? 'bg-red-100 text-red-800' :
-                                        usageInfo.percentage >= 80 ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-blue-100 text-blue-800'
+                                <span className={`text-xs md:text-sm px-2 md:px-3 py-1 rounded-full ${usageInfo.percentage >= 100 ? 'bg-red-100 text-red-800' :
+                                    usageInfo.percentage >= 80 ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-blue-100 text-blue-800'
                                     }`}>
                                     {usageInfo.current} / {usageInfo.limit}
                                 </span>
                             );
                         })()}
                     </div>
-                    <p className="text-gray-600 mt-1">Manage your customer database</p>
+                    <p className="text-sm md:text-base text-gray-600 mt-1">Manage your customer database</p>
                 </div>
                 <Button
                     variant="primary"
@@ -111,12 +111,10 @@ const Customers = () => {
                         resetForm();
                         setShowModal(true);
                     }}
-                    style={{
-                        display: 'flex'
-                    }}
+                    className="w-full md:w-auto flex items-center justify-center"
                 >
                     <Plus size={20} className="mr-2" />
-                    Add Customer
+                    <span>Add Customer</span>
                 </Button>
             </div>
 
