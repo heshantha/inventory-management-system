@@ -45,7 +45,9 @@ class SupabaseService {
                 .from('shops')
                 .insert({
                     ...shopData,
-                    is_active: true
+                    is_active: true,
+                    subscription_start_date: shopData.subscription_start_date || null,
+                    subscription_end_date: shopData.subscription_end_date || null
                 })
                 .select()
                 .single();
@@ -64,6 +66,8 @@ class SupabaseService {
                 .from('shops')
                 .update({
                     ...shopData,
+                    subscription_start_date: shopData.subscription_start_date || null,
+                    subscription_end_date: shopData.subscription_end_date || null,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', shopId);

@@ -14,7 +14,9 @@ import {
     TrendingUp,
     Users,
     CheckCircle,
-    XCircle
+    XCircle,
+    AlertTriangle,
+    Bell
 } from 'lucide-react';
 
 // Move form fields component outside to prevent re-renders
@@ -92,6 +94,29 @@ const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="+94 XX XXX XXXX"
             />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Start Date</label>
+            <input
+                type="date"
+                value={formData.subscriptionStartDate}
+                onChange={(e) => setFormData({ ...formData, subscriptionStartDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subscription End Date</label>
+            <input
+                type="date"
+                value={formData.subscriptionEndDate}
+                onChange={(e) => setFormData({ ...formData, subscriptionEndDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+                This date will be displayed in the shop header
+            </p>
         </div>
 
         <div className="col-span-2">
@@ -182,8 +207,12 @@ const SuperAdminDashboard = () => {
         phone: '',
         email: '',
         username: '',
-        password: ''
+        password: '',
+        subscriptionStartDate: '',
+        subscriptionEndDate: ''
     });
+
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive', 'expiring'
 
     useEffect(() => {
         // Redirect if not super admin
@@ -214,7 +243,9 @@ const SuperAdminDashboard = () => {
                 location: formData.location,
                 address: formData.address,
                 phone: formData.phone,
-                email: formData.email
+                email: formData.email,
+                subscription_start_date: formData.subscriptionStartDate || null,
+                subscription_end_date: formData.subscriptionEndDate || null
             });
 
             if (!shopResult.success) {
@@ -263,7 +294,9 @@ const SuperAdminDashboard = () => {
             phone: '',
             email: '',
             username: '',
-            password: ''
+            password: '',
+            subscriptionStartDate: '',
+            subscriptionEndDate: ''
         });
     };
 
@@ -279,7 +312,9 @@ const SuperAdminDashboard = () => {
             phone: shop.phone,
             email: shop.email,
             username: '',
-            password: ''
+            password: '',
+            subscriptionStartDate: shop.subscription_start_date || '',
+            subscriptionEndDate: shop.subscription_end_date || ''
         });
         setShowEditModal(true);
     };
@@ -295,7 +330,9 @@ const SuperAdminDashboard = () => {
             location: formData.location,
             address: formData.address,
             phone: formData.phone,
-            email: formData.email
+            email: formData.email,
+            subscription_start_date: formData.subscriptionStartDate || null,
+            subscription_end_date: formData.subscriptionEndDate || null
         });
 
         if (result.success) {
@@ -325,8 +362,36 @@ const SuperAdminDashboard = () => {
             const created = new Date(s.created_at);
             const now = new Date();
             return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+        }).length,
+        expiringSoon: shops.filter(s => {
+            if (!s.subscription_end_date) return false;
+            const endDate = new Date(s.subscription_end_date);
+            const today = new Date();
+            const daysUntilExpiry = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+            return daysUntilExpiry <= 7; // Expiring within 7 days or expired
         }).length
     };
+
+    const getFilteredShops = () => {
+        switch (filterStatus) {
+            case 'active':
+                return shops.filter(s => s.is_active);
+            case 'inactive':
+                return shops.filter(s => !s.is_active);
+            case 'expiring':
+                return shops.filter(s => {
+                    if (!s.subscription_end_date) return false;
+                    const endDate = new Date(s.subscription_end_date);
+                    const today = new Date();
+                    const daysUntilExpiry = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                    return daysUntilExpiry <= 7;
+                });
+            default:
+                return shops;
+        }
+    };
+
+    const filteredShops = getFilteredShops();
 
     if (loading) {
         return (
@@ -346,7 +411,10 @@ const SuperAdminDashboard = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div
+                    onClick={() => setFilterStatus(filterStatus === 'all' ? 'all' : 'all')}
+                    className={`bg-white rounded-lg shadow-sm border p-6 cursor-pointer transition-colors ${filterStatus === 'all' ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'}`}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Total Shops</p>
@@ -358,7 +426,10 @@ const SuperAdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div
+                    onClick={() => setFilterStatus(filterStatus === 'active' ? 'all' : 'active')}
+                    className={`bg-white rounded-lg shadow-sm border p-6 cursor-pointer transition-colors ${filterStatus === 'active' ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200 hover:border-green-300'}`}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Active Shops</p>
@@ -370,7 +441,10 @@ const SuperAdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div
+                    onClick={() => setFilterStatus(filterStatus === 'inactive' ? 'all' : 'inactive')}
+                    className={`bg-white rounded-lg shadow-sm border p-6 cursor-pointer transition-colors ${filterStatus === 'inactive' ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-red-300'}`}
+                >
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Inactive Shops</p>
@@ -382,14 +456,17 @@ const SuperAdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div
+                    onClick={() => setFilterStatus(filterStatus === 'expiring' ? 'all' : 'expiring')}
+                    className={`bg-white rounded-lg shadow-sm border p-6 cursor-pointer transition-colors ${filterStatus === 'expiring' ? 'border-orange-500 ring-1 ring-orange-500' : 'border-gray-200 hover:border-orange-300'}`}
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">New This Month</p>
-                            <p className="text-2xl font-bold text-purple-600">{stats.newThisMonth}</p>
+                            <p className="text-sm text-gray-600 mb-1">Expiring Soon</p>
+                            <p className="text-2xl font-bold text-orange-600">{stats.expiringSoon}</p>
                         </div>
-                        <div className="bg-purple-100 p-3 rounded-full">
-                            <TrendingUp className="text-purple-600" size={24} />
+                        <div className="bg-orange-100 p-3 rounded-full">
+                            <AlertTriangle className="text-orange-600" size={24} />
                         </div>
                     </div>
                 </div>
@@ -423,7 +500,7 @@ const SuperAdminDashboard = () => {
                                     Location
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Contact
+                                    Subscription
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
@@ -434,14 +511,14 @@ const SuperAdminDashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {shops.length === 0 ? (
+                            {filteredShops.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                                        No shops yet. Create your first shop customer!
+                                        No shops found matching your filter.
                                     </td>
                                 </tr>
                             ) : (
-                                shops.map((shop) => (
+                                filteredShops.map((shop) => (
                                     <tr key={shop.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -459,8 +536,21 @@ const SuperAdminDashboard = () => {
                                             {shop.location}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <div>{shop.phone}</div>
-                                            <div className="text-xs">{shop.email}</div>
+                                            {shop.subscription_end_date ? (
+                                                <div className="flex flex-col">
+                                                    <span>{new Date(shop.subscription_end_date).toLocaleDateString()}</span>
+                                                    {(() => {
+                                                        const endDate = new Date(shop.subscription_end_date);
+                                                        const today = new Date();
+                                                        const daysUntilExpiry = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+                                                        if (daysUntilExpiry < 0) return <span className="text-xs text-red-600 font-semibold">Expired</span>;
+                                                        if (daysUntilExpiry <= 7) return <span className="text-xs text-orange-600 font-semibold">{daysUntilExpiry} days left</span>;
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">Not set</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${shop.is_active
