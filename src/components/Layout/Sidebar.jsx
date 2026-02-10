@@ -16,6 +16,7 @@ import {
     Shield,
     Wrench,
     Monitor,
+    Megaphone,
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -38,6 +39,7 @@ const Sidebar = () => {
         { path: '/products', icon: Package, label: t('nav.products'), roles: ['shop_owner', 'manager', 'cashier'] },
         { path: '/customers', icon: Users, label: t('nav.customers'), roles: ['shop_owner', 'cashier', 'manager'] },
         { path: '/sales', icon: FileText, label: t('nav.sales'), roles: ['shop_owner', 'manager'] },
+        { path: '/promotions', icon: Megaphone, label: 'Promotions', roles: ['shop_owner', 'manager'] },
         { path: '/reports', icon: FileText, label: t('nav.reports'), roles: ['shop_owner', 'manager'] },
         { path: '/categories', icon: FolderTree, label: t('nav.categories'), roles: ['shop_owner', 'cashier'] },
         { path: '/suppliers', icon: TruckIcon, label: t('nav.suppliers'), roles: ['shop_owner', 'cashier'] },

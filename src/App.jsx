@@ -10,6 +10,7 @@ import PointOfSale from './pages/PointOfSale';
 import Products from './pages/Products';
 import Customers from './pages/Customers';
 import Sales from './pages/Sales';
+import Promotions from './pages/Promotions';
 import Reports from './pages/Reports';
 import Categories from './pages/Categories';
 import Suppliers from './pages/Suppliers';
@@ -117,6 +118,17 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Sales />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/promotions"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Promotions />
             </MainLayout>
           </ProtectedRoute>
         }
