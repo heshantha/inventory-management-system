@@ -43,7 +43,7 @@ const Login = () => {
                 {/* Header */}
                 <div className="bg-primary-600 text-white p-8 text-center">
                     <div className="flex justify-center mb-4">
-                        <img src="/logo.jpg" alt="SmartStock POS Logo" className="h-20 w-auto bg-white rounded-lg p-2" />
+                        <img src="/logo-smart-pos.jpeg" alt="SmartStock POS Logo" className="h-20 w-auto bg-white rounded-lg p-2" />
                     </div>
 
                     <p className="text-primary-100">Inventory & Billing Management</p>
