@@ -46,6 +46,17 @@ const Products = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Check for duplicate SKU
+        const skuExists = products.some(p =>
+            p.sku.toLowerCase() === formData.sku.toLowerCase() &&
+            (!editingProduct || p.id !== editingProduct.id)
+        );
+
+        if (skuExists) {
+            alert(`SKU "${formData.sku}" already exists. Please use a unique SKU.`);
+            return;
+        }
+
         // Convert empty strings to null for UUID fields
         const sanitizedData = {
             ...formData,

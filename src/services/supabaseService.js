@@ -494,6 +494,22 @@ class SupabaseService {
 
     async createProduct(productData) {
         try {
+            // Check if SKU already exists
+            const { data: existingProducts, error: checkError } = await this.supabase
+                .from('products')
+                .select('sku')
+                .eq('shop_id', productData.shop_id)
+                .eq('sku', productData.sku)
+                .eq('is_active', true);
+
+            if (checkError) {
+                console.error('Error checking SKU:', checkError);
+            }
+
+            if (existingProducts && existingProducts.length > 0) {
+                return { success: false, message: `SKU "${productData.sku}" already exists. Please use a unique SKU.` };
+            }
+
             const { data, error } = await this.supabase
                 .from('products')
                 .insert({
@@ -528,6 +544,24 @@ class SupabaseService {
 
     async updateProduct(id, productData) {
         try {
+            // If SKU is being updated, check if it already exists for another product
+            if (productData.sku) {
+                const { data: existingProducts, error: checkError } = await this.supabase
+                    .from('products')
+                    .select('id, sku')
+                    .eq('sku', productData.sku)
+                    .eq('is_active', true)
+                    .neq('id', id);
+
+                if (checkError) {
+                    console.error('Error checking SKU:', checkError);
+                }
+
+                if (existingProducts && existingProducts.length > 0) {
+                    return { success: false, message: `SKU "${productData.sku}" already exists. Please use a unique SKU.` };
+                }
+            }
+
             const updateData = {
                 ...productData,
                 updated_at: new Date().toISOString()
@@ -815,6 +849,11 @@ class SupabaseService {
 
             // Update product stock for each item
             for (const item of saleData.items) {
+                // Skip items without a product_id (e.g., service items)
+                if (!item.product_id) {
+                    continue;
+                }
+
                 const { data: product } = await this.supabase
                     .from('products')
                     .select('stock_quantity')
