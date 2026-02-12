@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useShop } from '../contexts/ShopContext';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import { Plus, Edit, Trash2, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
 const Products = () => {
     const { shopId, currentShop } = useShop();
+    const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [showModal, setShowModal] = useState(false);
+    const [showDamageModal, setShowDamageModal] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [formData, setFormData] = useState({
         sku: '',
@@ -24,6 +28,11 @@ const Products = () => {
         stock_quantity: 0,
         min_stock_level: 10,
         supplier_id: '',
+    });
+    const [damageFormData, setDamageFormData] = useState({
+        quantity: 1,
+        reason: 'Broken',
+        notes: ''
     });
 
     useEffect(() => {
@@ -117,6 +126,47 @@ const Products = () => {
             supplier_id: '',
         });
         setEditingProduct(null);
+    };
+
+    const handleMarkAsDamaged = (product) => {
+        if (product.stock_quantity === 0) {
+            alert('This product has no stock available to mark as damaged.');
+            return;
+        }
+        setSelectedProduct(product);
+        setDamageFormData({
+            quantity: 1,
+            reason: 'Broken',
+            notes: ''
+        });
+        setShowDamageModal(true);
+    };
+
+    const handleDamageSubmit = async (e) => {
+        e.preventDefault();
+
+        if (damageFormData.quantity > selectedProduct.stock_quantity) {
+            alert(`Cannot damage ${damageFormData.quantity} units. Only ${selectedProduct.stock_quantity} units available in stock.`);
+            return;
+        }
+
+        const result = await api.damages.create({
+            shop_id: shopId,
+            product_id: selectedProduct.id,
+            quantity: parseInt(damageFormData.quantity),
+            reason: damageFormData.reason,
+            notes: damageFormData.notes,
+            recorded_by: user?.id
+        });
+
+        if (result.success) {
+            await loadData();
+            setShowDamageModal(false);
+            setSelectedProduct(null);
+            alert('Damage recorded successfully. Stock has been updated.');
+        } else {
+            alert('Error: ' + result.message);
+        }
     };
 
     return (
@@ -228,12 +278,22 @@ const Products = () => {
                                         <button
                                             onClick={() => handleEdit(product)}
                                             className="text-primary-600 hover:text-primary-900"
+                                            title="Edit Product"
                                         >
                                             <Edit size={18} />
                                         </button>
                                         <button
+                                            onClick={() => handleMarkAsDamaged(product)}
+                                            className="text-orange-600 hover:text-orange-900"
+                                            title="Mark as Damaged"
+                                            disabled={product.stock_quantity === 0}
+                                        >
+                                            <XCircle size={18} />
+                                        </button>
+                                        <button
                                             onClick={() => handleDelete(product.id)}
                                             className="text-red-600 hover:text-red-900"
+                                            title="Delete Product"
                                         >
                                             <Trash2 size={18} />
                                         </button>
@@ -400,6 +460,92 @@ const Products = () => {
                         </Button>
                         <Button type="submit" variant="primary">
                             {editingProduct ? 'Update Product' : 'Add Product'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Mark as Damaged Modal */}
+            <Modal
+                isOpen={showDamageModal}
+                onClose={() => {
+                    setShowDamageModal(false);
+                    setSelectedProduct(null);
+                }}
+                title={`Mark as Damaged - ${selectedProduct?.name || ''}`}
+            >
+                <form onSubmit={handleDamageSubmit} className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center">
+                            <AlertTriangle className="text-yellow-600 mr-2" size={20} />
+                            <div>
+                                <p className="text-sm font-medium text-yellow-800">Available Stock: {selectedProduct?.stock_quantity || 0} units</p>
+                                <p className="text-xs text-yellow-700 mt-1">Recording damage will reduce the stock quantity.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity to Damage *
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            max={selectedProduct?.stock_quantity || 1}
+                            required
+                            value={damageFormData.quantity}
+                            onChange={(e) => setDamageFormData({ ...damageFormData, quantity: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Reason *
+                        </label>
+                        <select
+                            required
+                            value={damageFormData.reason}
+                            onChange={(e) => setDamageFormData({ ...damageFormData, reason: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        >
+                            <option value="Broken">Broken</option>
+                            <option value="Expired">Expired</option>
+                            <option value="Defective">Defective</option>
+                            <option value="Lost">Lost</option>
+                            <option value="Damaged in Transit">Damaged in Transit</option>
+                            <option value="Customer Return">Customer Return</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Notes
+                        </label>
+                        <textarea
+                            value={damageFormData.notes}
+                            onChange={(e) => setDamageFormData({ ...damageFormData, notes: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            rows={3}
+                            placeholder="Additional details about the damage..."
+                        />
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setShowDamageModal(false);
+                                setSelectedProduct(null);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="primary">
+                            Confirm Damage
                         </Button>
                     </div>
                 </form>

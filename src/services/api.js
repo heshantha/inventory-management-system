@@ -260,8 +260,48 @@ const api = {
         },
     },
 
+    // Product Damages
+    damages: {
+        getAll: async (shopId = null) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.getAll();
+            } else {
+                return await supabaseService.getAllDamages(shopId);
+            }
+        },
+        getByProduct: async (productId) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.getByProduct(productId);
+            } else {
+                return await supabaseService.getDamagesByProduct(productId);
+            }
+        },
+        create: async (damageData) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.create(damageData);
+            } else {
+                return await supabaseService.createDamage(damageData);
+            }
+        },
+        delete: async (id) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.delete(id);
+            } else {
+                return await supabaseService.deleteDamage(id);
+            }
+        },
+        getStats: async (shopId = null) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.getStats();
+            } else {
+                return await supabaseService.getDamageStats(shopId);
+            }
+        },
+    },
+
     // Dashboard
     dashboard: {
+
         getStats: async (shopId = null) => {
             if (isElectron()) {
                 return await window.electronAPI.dashboard.getStats();

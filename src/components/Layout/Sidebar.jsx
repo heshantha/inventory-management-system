@@ -17,6 +17,7 @@ import {
     Wrench,
     Monitor,
     Megaphone,
+    XCircle,
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -37,6 +38,7 @@ const Sidebar = () => {
         { path: '/', icon: LayoutDashboard, label: t('nav.dashboard'), roles: ['shop_owner', 'manager'] },
         { path: '/pos', icon: ShoppingCart, label: t('nav.pos'), roles: ['shop_owner', 'cashier'] },
         { path: '/products', icon: Package, label: t('nav.products'), roles: ['shop_owner', 'manager', 'cashier'] },
+        { path: '/damage-tracking', icon: XCircle, label: 'Damage Tracking', roles: ['shop_owner', 'manager'] },
         { path: '/customers', icon: Users, label: t('nav.customers'), roles: ['shop_owner', 'cashier', 'manager'] },
         { path: '/sales', icon: FileText, label: t('nav.sales'), roles: ['shop_owner', 'manager'] },
         { path: '/promotions', icon: Megaphone, label: 'Promotions', roles: ['shop_owner', 'manager'] },

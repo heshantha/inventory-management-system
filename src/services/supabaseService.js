@@ -1036,6 +1036,208 @@ class SupabaseService {
             return [];
         }
     }
+
+    // ==================== PRODUCT DAMAGES ====================
+
+    async getAllDamages(shopId = null) {
+        try {
+            let query = this.supabase
+                .from('product_damages')
+                .select(`
+                    *,
+                    products(name, sku),
+                    users(full_name)
+                `);
+
+            if (shopId) {
+                query = query.eq('shop_id', shopId);
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            return (data || []).map(damage => ({
+                ...damage,
+                product_name: damage.products?.name || null,
+                sku: damage.products?.sku || null,
+                recorded_by_name: damage.users?.full_name || null
+            }));
+        } catch (error) {
+            console.error('Error getting damages:', error);
+            return [];
+        }
+    }
+
+    async getDamagesByProduct(productId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('product_damages')
+                .select(`
+                    *,
+                    users(full_name)
+                `)
+                .eq('product_id', productId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            return (data || []).map(damage => ({
+                ...damage,
+                recorded_by_name: damage.users?.full_name || null
+            }));
+        } catch (error) {
+            console.error('Error getting product damages:', error);
+            return [];
+        }
+    }
+
+    async createDamage(damageData) {
+        try {
+            // Get current product stock
+            const { data: product, error: fetchError } = await this.supabase
+                .from('products')
+                .select('stock_quantity, name')
+                .eq('id', damageData.product_id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Validate quantity
+            if (damageData.quantity > product.stock_quantity) {
+                return {
+                    success: false,
+                    message: `Cannot damage ${damageData.quantity} units. Only ${product.stock_quantity} units available in stock.`
+                };
+            }
+
+            // Create damage record
+            const { data: damage, error: damageError } = await this.supabase
+                .from('product_damages')
+                .insert({
+                    shop_id: damageData.shop_id,
+                    product_id: damageData.product_id,
+                    quantity: damageData.quantity,
+                    reason: damageData.reason,
+                    notes: damageData.notes || null,
+                    recorded_by: damageData.recorded_by
+                })
+                .select()
+                .single();
+
+            if (damageError) throw damageError;
+
+            // Update product stock (reduce by damaged quantity)
+            const newStockQuantity = product.stock_quantity - damageData.quantity;
+            const { error: updateError } = await this.supabase
+                .from('products')
+                .update({
+                    stock_quantity: newStockQuantity,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', damageData.product_id);
+
+            if (updateError) throw updateError;
+
+            // Create stock movement record for audit trail
+            await this.supabase
+                .from('stock_movements')
+                .insert({
+                    product_id: damageData.product_id,
+                    movement_type: 'adjustment',
+                    quantity: -damageData.quantity,
+                    reference_type: 'damage',
+                    reference_id: damage.id,
+                    notes: `Damage: ${damageData.reason}${damageData.notes ? ' - ' + damageData.notes : ''}`
+                });
+
+            return { success: true, id: damage.id };
+        } catch (error) {
+            console.error('Error creating damage record:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    async deleteDamage(id) {
+        try {
+            // Note: Deleting damage records should be restricted to admin users
+            // You may want to adjust stock back when deleting a damage record
+            const { error } = await this.supabase
+                .from('product_damages')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Error deleting damage record:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    async getDamageStats(shopId = null) {
+        try {
+            const damages = await this.getAllDamages(shopId);
+            const products = await this.getAllProducts(shopId);
+
+            // Calculate total damaged quantity
+            const totalDamaged = damages.reduce((sum, d) => sum + parseInt(d.quantity || 0), 0);
+
+            // Group by reason
+            const byReason = damages.reduce((acc, d) => {
+                acc[d.reason] = (acc[d.reason] || 0) + parseInt(d.quantity || 0);
+                return acc;
+            }, {});
+
+            // Group by product
+            const byProduct = damages.reduce((acc, d) => {
+                const key = d.product_id;
+                if (!acc[key]) {
+                    acc[key] = {
+                        product_id: d.product_id,
+                        product_name: d.product_name,
+                        sku: d.sku,
+                        total_damaged: 0,
+                        damage_count: 0
+                    };
+                }
+                acc[key].total_damaged += parseInt(d.quantity || 0);
+                acc[key].damage_count++;
+                return acc;
+            }, {});
+
+            // Get most damaged products
+            const mostDamaged = Object.values(byProduct)
+                .sort((a, b) => b.total_damaged - a.total_damaged)
+                .slice(0, 5);
+
+            // Calculate estimated damage value
+            let totalValue = 0;
+            damages.forEach(damage => {
+                const product = products.find(p => p.id === damage.product_id);
+                if (product) {
+                    totalValue += parseFloat(product.cost_price || 0) * parseInt(damage.quantity || 0);
+                }
+            });
+
+            return {
+                total_damaged: totalDamaged,
+                total_records: damages.length,
+                total_value: totalValue,
+                by_reason: byReason,
+                most_damaged: mostDamaged
+            };
+        } catch (error) {
+            console.error('Error getting damage stats:', error);
+            return {
+                total_damaged: 0,
+                total_records: 0,
+                total_value: 0,
+                by_reason: {},
+                most_damaged: []
+            };
+        }
+    }
 }
 
 // Create singleton instance

@@ -17,6 +17,7 @@ import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 import Garage from './pages/Garage';
 import RepairService from './pages/RepairService';
+import DamageTracking from './pages/DamageTracking';
 import SuperAdminDashboard from './pages/SuperAdmin/SuperAdminDashboard';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
@@ -195,6 +196,17 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <RepairService />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/damage-tracking"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DamageTracking />
             </MainLayout>
           </ProtectedRoute>
         }
