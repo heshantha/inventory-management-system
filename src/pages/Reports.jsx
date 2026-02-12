@@ -68,18 +68,21 @@ const Reports = () => {
 
     const filterSalesByDateRange = () => {
         const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
+
         return sales.filter(sale => {
             const saleDate = new Date(sale.created_at);
+            const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate()); // Sale date at midnight
 
             switch (dateRange) {
                 case 'today':
-                    return saleDate.toDateString() === now.toDateString();
+                    return saleDateOnly.getTime() === today.getTime();
                 case 'week':
-                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    return saleDate >= weekAgo;
+                    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    return saleDateOnly >= weekAgo;
                 case 'month':
-                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    return saleDate >= monthAgo;
+                    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    return saleDateOnly >= monthAgo;
                 case 'all':
                 default:
                     return true;
@@ -178,21 +181,82 @@ const Reports = () => {
     };
 
     const handleDownloadPDF = () => {
+        // Recalculate stats with current filters to ensure PDF has latest data
+        let filteredSales = filterSalesByDateRange();
+
+        // Filter by active tab (POS or Repairs)
+        if (activeTab === 'pos') {
+            filteredSales = filteredSales.filter(sale => !isRepairSale(sale));
+        } else {
+            filteredSales = filteredSales.filter(sale => isRepairSale(sale));
+        }
+
+        // Calculate fresh stats for PDF
+        const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total_amount, 0);
+        const totalSales = filteredSales.length;
+        const totalDiscounts = filteredSales.reduce((sum, sale) => sum + (sale.discount_amount || 0), 0);
+        const totalTax = filteredSales.reduce((sum, sale) => sum + (sale.tax_amount || 0), 0);
+        const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+        // Calculate top products for PDF
+        const productSales = {};
+        filteredSales.forEach(sale => {
+            if (sale.items) {
+                sale.items.forEach(item => {
+                    const key = item.product_id || item.name;
+                    if (!productSales[key]) {
+                        const product = products.find(p => p.id === item.product_id);
+                        productSales[key] = {
+                            product_id: item.product_id,
+                            name: product?.name || item.name || 'Unknown Item',
+                            quantity: 0,
+                            revenue: 0,
+                        };
+                    }
+                    productSales[key].quantity += item.quantity;
+                    const itemTotal = parseFloat(item.total_price) || (parseFloat(item.quantity) * parseFloat(item.unit_price)) || 0;
+                    productSales[key].revenue += itemTotal;
+                });
+            }
+        });
+
+        const topProducts = Object.values(productSales)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5);
+
+        // Calculate payment methods for PDF
+        const paymentMethodBreakdown = {};
+        filteredSales.forEach(sale => {
+            const method = sale.payment_method || 'unknown';
+            if (!paymentMethodBreakdown[method]) {
+                paymentMethodBreakdown[method] = { count: 0, total: 0 };
+            }
+            paymentMethodBreakdown[method].count += 1;
+            paymentMethodBreakdown[method].total += sale.total_amount;
+        });
+
         const reportData = {
-            totalRevenue: stats.totalRevenue,
-            totalSales: stats.totalSales,
-            totalDiscounts: stats.totalDiscounts,
-            totalTax: stats.totalTax,
-            averageOrderValue: stats.averageOrderValue,
-            topProducts: stats.topProducts,
-            lowStockProducts: stats.lowStockProducts,
-            paymentMethodBreakdown: stats.paymentMethodBreakdown,
+            totalRevenue,
+            totalSales,
+            totalDiscounts,
+            totalTax,
+            averageOrderValue,
+            topProducts,
+            lowStockProducts: stats.lowStockProducts, // Low stock is not date-dependent
+            paymentMethodBreakdown,
         };
 
         const dateRangeLabel = getDateRangeLabel();
         const reportTitle = activeTab === 'repairs'
             ? (currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' ? 'Garage Report' : 'Repair Report')
             : 'Sales Report';
+
+        console.log(`Generating ${reportTitle} for ${dateRangeLabel}`, {
+            totalSales,
+            totalRevenue,
+            dateRange,
+            activeTab
+        });
 
         downloadSalesReportPDF(reportData, dateRangeLabel, currentShop, reportTitle);
     };

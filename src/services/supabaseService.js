@@ -385,7 +385,12 @@ class SupabaseService {
 
     async getAllSuppliers(shopId = null) {
         try {
-            let query = this.supabase.from('suppliers').select('*');
+            let query = this.supabase
+                .from('suppliers')
+                .select(`
+                    *,
+                    product_count:products(count)
+                `);
 
             if (shopId) {
                 query = query.eq('shop_id', shopId);
@@ -394,9 +399,44 @@ class SupabaseService {
             const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data || [];
+
+            // Transform product count from array to number
+            return (data || []).map(supplier => ({
+                ...supplier,
+                product_count: supplier.product_count?.[0]?.count || 0
+            }));
         } catch (error) {
             console.error('Error getting suppliers:', error);
+            return [];
+        }
+    }
+
+    async getSupplierProducts(supplierId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('products')
+                .select(`
+                    id,
+                    sku,
+                    name,
+                    stock_quantity,
+                    cost_price,
+                    selling_price,
+                    category_id,
+                    categories(name)
+                `)
+                .eq('supplier_id', supplierId)
+                .order('name');
+
+            if (error) throw error;
+
+            // Transform category data
+            return (data || []).map(product => ({
+                ...product,
+                category_name: product.categories?.name || 'Uncategorized'
+            }));
+        } catch (error) {
+            console.error('Error fetching supplier products:', error);
             return [];
         }
     }
@@ -446,6 +486,44 @@ class SupabaseService {
             return { success: true };
         } catch (error) {
             console.error('Error deleting supplier:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    async updateSupplierProducts(supplierId, productIds) {
+        try {
+            // First, get the shop_id from the supplier
+            const { data: supplier, error: supplierError } = await this.supabase
+                .from('suppliers')
+                .select('shop_id')
+                .eq('id', supplierId)
+                .single();
+
+            if (supplierError) throw supplierError;
+
+            // Remove this supplier from all products in this shop that aren't in the new list
+            const { error: removeError } = await this.supabase
+                .from('products')
+                .update({ supplier_id: null, updated_at: new Date().toISOString() })
+                .eq('supplier_id', supplierId)
+                .eq('shop_id', supplier.shop_id);
+
+            if (removeError) throw removeError;
+
+            // Assign selected products to this supplier
+            if (productIds && productIds.length > 0) {
+                const { error: assignError } = await this.supabase
+                    .from('products')
+                    .update({ supplier_id: supplierId, updated_at: new Date().toISOString() })
+                    .in('id', productIds)
+                    .eq('shop_id', supplier.shop_id);
+
+                if (assignError) throw assignError;
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error updating supplier products:', error);
             return { success: false, message: error.message };
         }
     }

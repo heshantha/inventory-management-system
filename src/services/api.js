@@ -90,6 +90,13 @@ const api = {
                 return await supabaseService.getAllSuppliers(shopId);
             }
         },
+        getProducts: async (supplierId) => {
+            if (isElectron()) {
+                return await window.electronAPI.suppliers.getProducts(supplierId);
+            } else {
+                return await supabaseService.getSupplierProducts(supplierId);
+            }
+        },
         create: async (supplier) => {
             if (isElectron()) {
                 return await window.electronAPI.suppliers.create(supplier);
@@ -109,6 +116,13 @@ const api = {
                 return await window.electronAPI.suppliers.delete(id);
             } else {
                 return await supabaseService.deleteSupplier(id);
+            }
+        },
+        updateProducts: async (supplierId, productIds) => {
+            if (isElectron()) {
+                return await window.electronAPI.suppliers.updateProducts(supplierId, productIds);
+            } else {
+                return await supabaseService.updateSupplierProducts(supplierId, productIds);
             }
         },
     },

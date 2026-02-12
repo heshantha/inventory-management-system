@@ -738,7 +738,7 @@ const PointOfSale = () => {
 
             {/* Receipt Modal - Conditional based on shop type */}
             {showReceipt && currentInvoice && (
-                currentShop?.business_type === 'Computer Shop' ? (
+                (currentShop?.business_type === 'Computer Shop' || currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage') ? (
                     <Invoice
                         invoice={currentInvoice}
                         onClose={() => setShowReceipt(false)}
