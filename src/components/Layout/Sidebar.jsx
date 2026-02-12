@@ -52,9 +52,9 @@ const Sidebar = () => {
         { path: '/', icon: LayoutDashboard, label: t('nav.dashboard'), roles: ['shop_owner', 'manager'] },
         { path: '/pos', icon: ShoppingCart, label: t('nav.pos'), roles: ['shop_owner', 'cashier'] },
         { path: '/sales', icon: FileText, label: t('nav.sales'), roles: ['shop_owner', 'manager'] },
-        { path: '/promotions', icon: Megaphone, label: 'Promotions', roles: ['shop_owner', 'manager'] },
         { path: '/reports', icon: FileText, label: t('nav.reports'), roles: ['shop_owner', 'manager'] },
         { path: '/users', icon: UserPlus, label: t('nav.users'), roles: ['shop_owner'] },
+        { path: '/promotions', icon: Megaphone, label: 'Promotions', roles: ['shop_owner', 'manager'] },
     ];
 
     // Add Garage menu item for Service Center shops only
@@ -95,80 +95,82 @@ const Sidebar = () => {
             {/* Navigation */}
             <nav className="flex-1 p-4 overflow-y-auto">
                 <ul className="space-y-2">
-                    {filteredMenu.map((item) => (
-                        <li key={item.path} className="relative group">
-                            <NavLink
-                                to={item.path}
-                                end={item.path === '/'}
-                                className={({ isActive }) =>
-                                    `flex items-center justify-center lg:justify-start lg:space-x-3 px-2 lg:px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                                        ? 'bg-primary-600 text-white shadow-lg'
-                                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                                    }`
-                                }
-                                title={item.label}
-                            >
-                                <item.icon size={20} />
-                                <span className="hidden lg:inline font-medium">{item.label}</span>
-                            </NavLink>
-                            {/* Tooltip for mobile/tablet - shows on hover */}
-                            <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 lg:hidden">
-                                {item.label}
-                                {/* Arrow pointing left */}
-                                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
-                            </div>
-                        </li>
-                    ))}
-
-                    {/* Inventory Dropdown */}
-                    {!isSuperAdmin && filteredInventoryItems.length > 0 && (
-                        <li className="relative group">
-                            <button
-                                onClick={() => setInventoryOpen(!inventoryOpen)}
-                                className={`w-full flex items-center justify-center lg:justify-between px-2 lg:px-4 py-3 rounded-lg transition-all duration-200 ${isInventoryActive
-                                    ? 'bg-primary-600 text-white shadow-lg'
-                                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                                    }`}
-                                title="Inventory"
-                            >
-                                <div className="flex items-center lg:space-x-3">
-                                    <Warehouse size={20} />
-                                    <span className="hidden lg:inline font-medium">Inventory</span>
+                    {filteredMenu.map((item, index) => (
+                        <React.Fragment key={item.path}>
+                            <li className="relative group">
+                                <NavLink
+                                    to={item.path}
+                                    end={item.path === '/'}
+                                    className={({ isActive }) =>
+                                        `flex items-center justify-center lg:justify-start lg:space-x-3 px-2 lg:px-4 py-3 rounded-lg transition-all duration-200 ${isActive
+                                            ? 'bg-primary-600 text-white shadow-lg'
+                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                        }`
+                                    }
+                                    title={item.label}
+                                >
+                                    <item.icon size={20} />
+                                    <span className="hidden lg:inline font-medium">{item.label}</span>
+                                </NavLink>
+                                {/* Tooltip for mobile/tablet - shows on hover */}
+                                <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 lg:hidden">
+                                    {item.label}
+                                    {/* Arrow pointing left */}
+                                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
                                 </div>
-                                <div className="hidden lg:block">
-                                    {inventoryOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                </div>
-                            </button>
-                            {/* Tooltip for mobile/tablet */}
-                            <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 lg:hidden">
-                                Inventory
-                                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
-                            </div>
+                            </li>
 
-                            {/* Submenu items */}
-                            {inventoryOpen && (
-                                <ul className="mt-2 space-y-1">
-                                    {filteredInventoryItems.map((item) => (
-                                        <li key={item.path}>
-                                            <NavLink
-                                                to={item.path}
-                                                className={({ isActive }) =>
-                                                    `flex items-center justify-center lg:justify-start lg:space-x-3 px-2 lg:px-4 lg:pl-8 py-2 rounded-lg transition-all duration-200 text-sm ${isActive
-                                                        ? 'bg-primary-500 text-white'
-                                                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                                                    }`
-                                                }
-                                                title={item.label}
-                                            >
-                                                <item.icon size={16} />
-                                                <span className="hidden lg:inline font-medium">{item.label}</span>
-                                            </NavLink>
-                                        </li>
-                                    ))}
-                                </ul>
+                            {/* Insert Inventory Dropdown after POS */}
+                            {item.path === '/pos' && !isSuperAdmin && filteredInventoryItems.length > 0 && (
+                                <li className="relative group">
+                                    <button
+                                        onClick={() => setInventoryOpen(!inventoryOpen)}
+                                        className={`w-full flex items-center justify-center lg:justify-between px-2 lg:px-4 py-3 rounded-lg transition-all duration-200 ${isInventoryActive
+                                            ? 'bg-primary-600 text-white shadow-lg'
+                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                            }`}
+                                        title="Inventory"
+                                    >
+                                        <div className="flex items-center lg:space-x-3">
+                                            <Warehouse size={20} />
+                                            <span className="hidden lg:inline font-medium">Inventory</span>
+                                        </div>
+                                        <div className="hidden lg:block">
+                                            {inventoryOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                        </div>
+                                    </button>
+                                    {/* Tooltip for mobile/tablet */}
+                                    <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 lg:hidden">
+                                        Inventory
+                                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
+                                    </div>
+
+                                    {/* Submenu items */}
+                                    {inventoryOpen && (
+                                        <ul className="mt-2 space-y-1">
+                                            {filteredInventoryItems.map((item) => (
+                                                <li key={item.path}>
+                                                    <NavLink
+                                                        to={item.path}
+                                                        className={({ isActive }) =>
+                                                            `flex items-center justify-center lg:justify-start lg:space-x-3 px-2 lg:px-4 lg:pl-8 py-2 rounded-lg transition-all duration-200 text-sm ${isActive
+                                                                ? 'bg-primary-500 text-white'
+                                                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                                                            }`
+                                                        }
+                                                        title={item.label}
+                                                    >
+                                                        <item.icon size={16} />
+                                                        <span className="hidden lg:inline font-medium">{item.label}</span>
+                                                    </NavLink>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </li>
                             )}
-                        </li>
-                    )}
+                        </React.Fragment>
+                    ))}
                 </ul>
             </nav>
 
