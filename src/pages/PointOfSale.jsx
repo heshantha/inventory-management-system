@@ -742,6 +742,7 @@ const PointOfSale = () => {
                     <Invoice
                         invoice={currentInvoice}
                         onClose={() => setShowReceipt(false)}
+                        currentShop={currentShop}
                     />
                 ) : (
                     <Modal

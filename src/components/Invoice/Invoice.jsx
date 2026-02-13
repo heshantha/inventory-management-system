@@ -1,13 +1,15 @@
 import React from 'react';
-import { useShop } from '../../contexts/ShopContext';
 import { formatCurrency } from '../../utils/calculations';
 import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import { Download, Printer, X } from 'lucide-react';
 
-const Invoice = ({ invoice, onClose }) => {
-    const { currentShop } = useShop();
+const Invoice = ({ invoice, onClose, currentShop }) => {
 
     if (!invoice) return null;
+
+    // Debug logging
+    console.log('Invoice - Shop Type:', currentShop?.business_type);
+    console.log('Invoice - Will use page size:', currentShop?.business_type === 'Service Center' ? '210mm x 148mm (Portrait)' : 'A4 Landscape');
 
     const handlePrint = () => {
         window.print();
@@ -185,25 +187,77 @@ const Invoice = ({ invoice, onClose }) => {
             </div>
 
             {/* Print Styles */}
-            <style jsx>{`
-                @media print {
-                    @page {
-                        size: A4 landscape;
-                        margin: 10mm;
+            {/* Print Styles */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                    @media print {
+                        /* Hide everything by default */
+                        body * {
+                            visibility: hidden;
+                        }
+
+                        /* Page setup */
+                        @page {
+                            size: ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? '210mm 148mm' : 'A4 landscape'};
+                            margin: 0; /* Minimal margin at page level */
+                        }
+
+                        html, body {
+                            height: 100%;
+                            overflow: hidden !important; /* Prevent blank pages */
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+
+                        /* Make invoice visible and positioned */
+                        .service-invoice, .service-invoice * {
+                            visibility: visible;
+                        }
+
+                        .service-invoice {
+                            position: fixed; /* Fixed position forces it to top of page */
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            margin: 0;
+                            z-index: 9999; /* Ensure it's on top */
+                            background: white;
+                            padding: ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
+                        }
+                        
+                        /* Service Center & Computer Shop specific adjustments */
+                        ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? `
+                            .service-invoice {
+                                width: 210mm;
+                                height: 148mm;
+                                max-height: 148mm;
+                                overflow: hidden;
+                            }
+
+                            /* Compact Typography */
+                            .service-invoice h1 { font-size: 16px !important; margin-bottom: 2px !important; }
+                            .service-invoice h2 { font-size: 14px !important; margin: 2px 0 !important; }
+                            .service-invoice h3 { font-size: 12px !important; margin: 2px 0 !important; }
+                            .service-invoice p, .service-invoice span, .service-invoice div { 
+                                font-size: 10px !important; 
+                                line-height: 1.2 !important; 
+                            }
+                            
+                            /* Compact Tables */
+                            .service-invoice th, .service-invoice td {
+                                padding: 2px 4px !important;
+                                font-size: 9px !important;
+                            }
+                            
+                            /* Adjust spacing helpers */
+                            .service-invoice .mb-4, .service-invoice .mb-6 { margin-bottom: 4px !important; }
+                            .service-invoice .mt-4, .service-invoice .mt-8 { margin-top: 4px !important; }
+                            .service-invoice .p-4, .service-invoice .p-6, .service-invoice .p-8 { padding: 0 !important; }
+                            .service-invoice .gap-3 { gap: 4px !important; }
+                        ` : ''}
                     }
-                    
-                    body {
-                        print-color-adjust: exact;
-                        -webkit-print-color-adjust: exact;
-                    }
-                    
-                    .service-invoice {
-                        width: 100%;
-                        height: 100%;
-                        page-break-after: avoid;
-                    }
-                }
-            `}</style>
+                `
+            }} />
         </div>
     );
 };

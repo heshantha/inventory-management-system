@@ -221,25 +221,88 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
             </div>
 
             {/* Print Styles */}
-            <style jsx>{`
-                @media print {
-                    @page {
-                        size: A4 landscape;
-                        margin: 10mm;
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                    @media print {
+                        /* Hide everything by default */
+                        body * {
+                            visibility: hidden;
+                        }
+
+                        /* Page setup */
+                        @page {
+                            size: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '210mm 148mm' : 'A4 landscape'};
+                            margin: 0;
+                        }
+
+                        html, body {
+                            height: 100%;
+                            overflow: hidden !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+
+                        /* Make invoice visible and positioned */
+                        .service-invoice, .service-invoice * {
+                            visibility: visible;
+                        }
+
+                        .service-invoice {
+                            position: fixed;
+                            left: 0;
+                            top: 0;
+                            width: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '210mm' : '100%'};
+                            height: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '148mm' : '100%'};
+                            max-height: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '148mm' : 'none'};
+                            margin: 0;
+                            padding: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '5mm' : '10mm'} !important;
+                            z-index: 9999;
+                            background: white;
+                            overflow: hidden;
+                        }
+
+                        /* Compact Typography & Layout - Only for target shop types */
+                        ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? `
+                            .service-invoice * {
+                                font-size: 8px !important;
+                                line-height: 1.2 !important;
+                            }
+
+                            .service-invoice h1 { font-size: 14px !important; margin-bottom: 2px !important; font-weight: bold !important; }
+                            .service-invoice h2 { font-size: 12px !important; margin: 2px 0 !important; font-weight: bold !important; }
+                            .service-invoice h3 { font-size: 10px !important; margin: 2px 0 !important; font-weight: bold !important; }
+                            
+                            .service-invoice p, .service-invoice span, .service-invoice div { 
+                                font-size: 8px !important; 
+                            }
+
+                            .service-invoice table {
+                                width: 100% !important;
+                                border-collapse: collapse !important;
+                                font-size: 7px !important;
+                            }
+
+                            .service-invoice th, .service-invoice td {
+                                padding: 1px 3px !important;
+                                font-size: 7px !important;
+                            }
+
+                            /* Spacing Adjustments */
+                            .service-invoice .gap-3, .service-invoice .gap-4, .service-invoice .gap-6 { gap: 4px !important; }
+                            .service-invoice .mb-4, .service-invoice .mb-6 { margin-bottom: 3px !important; }
+                            .service-invoice .p-3, .service-invoice .p-4, .service-invoice .p-6, .service-invoice .p-8 { padding: 0 !important; }
+                            .service-invoice .mt-1, .service-invoice .mt-2 { margin-top: 1px !important; }
+                            
+                            /* Container adjustments */
+                            .service-invoice .bg-gray-50, .service-invoice .bg-primary-50 {
+                                padding: 3px !important;
+                                background-color: transparent !important;
+                                border: 1px solid #eee !important;
+                            }
+                        ` : ''}
                     }
-                    
-                    body {
-                        print-color-adjust: exact;
-                        -webkit-print-color-adjust: exact;
-                    }
-                    
-                    .service-invoice {
-                        width: 100%;
-                        height: 100%;
-                        page-break-after: avoid;
-                    }
-                }
-            `}</style>
+                `
+            }} />
         </div>
     );
 };
