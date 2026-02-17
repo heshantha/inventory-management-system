@@ -3,6 +3,7 @@ import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Toast from '../components/common/Toast';
 import { Plus, Edit, Trash2, Truck, Phone, Mail, MapPin, Package, Eye, X } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 import { formatCurrency } from '../utils/calculations';
@@ -26,6 +27,7 @@ const Suppliers = () => {
         phone: '',
         address: '',
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (shopId) {
@@ -61,15 +63,19 @@ const Suppliers = () => {
             const productResult = await api.suppliers.updateProducts(supplierId, selectedProductIds);
 
             if (!productResult.success) {
-                alert('Supplier saved but error updating products: ' + productResult.message);
+                setToast({ show: true, message: 'Supplier saved but error updating products: ' + productResult.message, type: 'error' });
             }
 
             await loadSuppliers();
             setShowModal(false);
             resetForm();
-            alert(editingSupplier ? 'Supplier updated successfully!' : 'Supplier created successfully!');
+            setToast({
+                show: true,
+                message: editingSupplier ? 'Supplier updated successfully!' : 'Supplier created successfully!',
+                type: 'success'
+            });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -93,8 +99,13 @@ const Suppliers = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this supplier?')) {
-            await api.suppliers.delete(id);
-            await loadSuppliers();
+            const result = await api.suppliers.delete(id);
+            if (result.success) {
+                await loadSuppliers();
+                setToast({ show: true, message: 'Supplier deleted successfully!', type: 'success' });
+            } else {
+                setToast({ show: true, message: 'Error deleting supplier: ' + result.message, type: 'error' });
+            }
         }
     };
 
@@ -158,7 +169,11 @@ const Suppliers = () => {
                     onClick={() => {
                         if (currentShop && !canAddItem(suppliers.length, currentShop.package_type, 'suppliers')) {
                             const usageInfo = getUsageInfo(suppliers.length, currentShop.package_type, 'suppliers');
-                            alert(`Supplier limit reached (${usageInfo.limit}). Please upgrade your package to add more suppliers.`);
+                            setToast({
+                                show: true,
+                                message: `Supplier limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                type: 'error'
+                            });
                             return;
                         }
                         resetForm();
@@ -488,6 +503,14 @@ const Suppliers = () => {
                     </div>
                 </div>
             </Modal>
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
+                />
+            )}
         </div>
     );
 };

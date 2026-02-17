@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Toast from '../components/common/Toast';
 import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
@@ -34,6 +35,7 @@ const Products = () => {
         reason: 'Broken',
         notes: ''
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (shopId) {
@@ -62,7 +64,7 @@ const Products = () => {
         );
 
         if (skuExists) {
-            alert(`SKU "${formData.sku}" already exists. Please use a unique SKU.`);
+            setToast({ show: true, message: `SKU "${formData.sku}" already exists. Please use a unique SKU.`, type: 'error' });
             return;
         }
 
@@ -86,9 +88,13 @@ const Products = () => {
             await loadData();
             setShowModal(false);
             resetForm();
-            alert(editingProduct ? 'Product updated successfully!' : 'Product created successfully!');
+            setToast({
+                show: true,
+                message: editingProduct ? 'Product updated successfully!' : 'Product created successfully!',
+                type: 'success'
+            });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -132,7 +138,7 @@ const Products = () => {
 
     const handleMarkAsDamaged = (product) => {
         if (product.stock_quantity === 0) {
-            alert('This product has no stock available to mark as damaged.');
+            setToast({ show: true, message: 'This product has no stock available to mark as damaged.', type: 'error' });
             return;
         }
         setSelectedProduct(product);
@@ -148,7 +154,11 @@ const Products = () => {
         e.preventDefault();
 
         if (damageFormData.quantity > selectedProduct.stock_quantity) {
-            alert(`Cannot damage ${damageFormData.quantity} units. Only ${selectedProduct.stock_quantity} units available in stock.`);
+            setToast({
+                show: true,
+                message: `Cannot damage ${damageFormData.quantity} units. Only ${selectedProduct.stock_quantity} units available.`,
+                type: 'error'
+            });
             return;
         }
 
@@ -165,9 +175,9 @@ const Products = () => {
             await loadData();
             setShowDamageModal(false);
             setSelectedProduct(null);
-            alert('Damage recorded successfully. Stock has been updated.');
+            setToast({ show: true, message: 'Damage recorded successfully. Stock has been updated.', type: 'success' });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -197,7 +207,11 @@ const Products = () => {
                     onClick={() => {
                         if (currentShop && !canAddItem(products.length, currentShop.package_type, 'products')) {
                             const usageInfo = getUsageInfo(products.length, currentShop.package_type, 'products');
-                            alert(`Product limit reached (${usageInfo.limit}). Please upgrade your package to add more products.`);
+                            setToast({
+                                show: true,
+                                message: `Product limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                type: 'error'
+                            });
                             return;
                         }
                         resetForm();
@@ -559,7 +573,19 @@ const Products = () => {
                     </div>
                 </form>
             </Modal>
-        </div>
+
+
+            {
+                toast.show && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast({ ...toast, show: false })}
+                        duration={2000}
+                    />
+                )
+            }
+        </div >
     );
 };
 

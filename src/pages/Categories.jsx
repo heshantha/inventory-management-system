@@ -3,6 +3,7 @@ import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Toast from '../components/common/Toast';
 import { Plus, Edit, Trash2, Tag } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
@@ -15,6 +16,7 @@ const Categories = () => {
         name: '',
         description: '',
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (shopId) {
@@ -42,9 +44,13 @@ const Categories = () => {
             await loadCategories();
             setShowModal(false);
             resetForm();
-            alert(editingCategory ? 'Category updated successfully!' : 'Category created successfully!');
+            setToast({
+                show: true,
+                message: editingCategory ? 'Category updated successfully!' : 'Category created successfully!',
+                type: 'success'
+            });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -59,8 +65,13 @@ const Categories = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this category?')) {
-            await api.categories.delete(id);
-            await loadCategories();
+            const result = await api.categories.delete(id);
+            if (result.success) {
+                await loadCategories();
+                setToast({ show: true, message: 'Category deleted successfully!', type: 'success' });
+            } else {
+                setToast({ show: true, message: 'Error deleting category: ' + result.message, type: 'error' });
+            }
         }
     };
 
@@ -97,7 +108,11 @@ const Categories = () => {
                     onClick={() => {
                         if (currentShop && !canAddItem(categories.length, currentShop.package_type, 'categories')) {
                             const usageInfo = getUsageInfo(categories.length, currentShop.package_type, 'categories');
-                            alert(`Category limit reached (${usageInfo.limit}). Please upgrade your package to add more categories.`);
+                            setToast({
+                                show: true,
+                                message: `Category limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                type: 'error'
+                            });
                             return;
                         }
                         resetForm();
@@ -224,6 +239,14 @@ const Categories = () => {
                     </div>
                 </form>
             </Modal>
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
+                />
+            )}
         </div >
     );
 };

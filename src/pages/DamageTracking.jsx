@@ -6,6 +6,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { AlertTriangle, Plus, Trash2, TrendingDown, Package, DollarSign, Edit } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
+import Toast from '../components/common/Toast';
 
 const DamageTracking = () => {
     const { shopId } = useShop();
@@ -22,6 +23,7 @@ const DamageTracking = () => {
         reason: 'Broken',
         notes: ''
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const damageReasons = [
         'Broken',
@@ -61,12 +63,12 @@ const DamageTracking = () => {
         e.preventDefault();
 
         if (!formData.product_id) {
-            alert('Please select a product');
+            setToast({ show: true, message: 'Please select a product', type: 'error' });
             return;
         }
 
         if (formData.quantity <= 0) {
-            alert('Quantity must be greater than 0');
+            setToast({ show: true, message: 'Quantity must be greater than 0', type: 'error' });
             return;
         }
 
@@ -90,9 +92,16 @@ const DamageTracking = () => {
             await loadData();
             setShowModal(false);
             resetForm();
-            alert(editingDamage ? 'Damage record updated successfully!' : 'Damage recorded successfully!');
+            await loadData();
+            setShowModal(false);
+            resetForm();
+            setToast({
+                show: true,
+                message: editingDamage ? 'Damage record updated successfully!' : 'Damage recorded successfully!',
+                type: 'success'
+            });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -112,9 +121,9 @@ const DamageTracking = () => {
             const result = await api.damages.delete(id);
             if (result.success) {
                 await loadData();
-                alert('Damage record deleted and stock restored successfully!');
+                setToast({ show: true, message: 'Damage record deleted and stock restored successfully!', type: 'success' });
             } else {
-                alert('Error deleting record: ' + result.message);
+                setToast({ show: true, message: 'Error deleting record: ' + result.message, type: 'error' });
             }
         }
     };
@@ -411,7 +420,19 @@ const DamageTracking = () => {
                     </div>
                 </form>
             </Modal>
-        </div>
+
+
+            {
+                toast.show && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast({ ...toast, show: false })}
+                        duration={2000}
+                    />
+                )
+            }
+        </div >
     );
 };
 

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Toast from '../components/common/Toast';
 import { UserPlus, Edit2, Trash2, User, Mail, Lock, Shield } from 'lucide-react';
 
 const Users = () => {
@@ -19,6 +20,7 @@ const Users = () => {
         role: 'cashier',
         is_active: true,
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (shopId) {
@@ -95,12 +97,12 @@ const Users = () => {
         e.preventDefault();
 
         if (!formData.username || !formData.full_name) {
-            alert('Username and Full Name are required');
+            setToast({ show: true, message: 'Username and Full Name are required', type: 'error' });
             return;
         }
 
         if (!editingUser && !formData.password) {
-            alert('Password is required for new users');
+            setToast({ show: true, message: 'Password is required for new users', type: 'error' });
             return;
         }
 
@@ -109,7 +111,7 @@ const Users = () => {
         const canAssignRole = availableRoles.some(r => r.value === formData.role);
 
         if (!canAssignRole && !editingUser) {
-            alert(`You don't have permission to create ${formData.role} users`);
+            setToast({ show: true, message: `You don't have permission to create ${formData.role} users`, type: 'error' });
             return;
         }
 
@@ -129,19 +131,28 @@ const Users = () => {
 
         // Check if the operation was successful
         if (result && result.success === false) {
-            alert('Error: ' + (result.message || 'Failed to save user'));
+            setToast({ show: true, message: 'Error: ' + (result.message || 'Failed to save user'), type: 'error' });
             return;
         }
 
         loadUsers();
-        alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
+        setToast({
+            show: true,
+            message: editingUser ? 'User updated successfully!' : 'User created successfully!',
+            type: 'success'
+        });
         handleCloseModal();
     };
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
-            await api.users.delete(id);
-            loadUsers();
+            const result = await api.users.delete(id);
+            if (result.success) {
+                loadUsers();
+                setToast({ show: true, message: 'User deleted successfully!', type: 'success' });
+            } else {
+                setToast({ show: true, message: 'Error deleting user: ' + (result.message || 'Unknown error'), type: 'error' });
+            }
         }
     };
 
@@ -359,6 +370,14 @@ const Users = () => {
                     </div>
                 </form>
             </Modal>
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
+                />
+            )}
         </div>
     );
 };

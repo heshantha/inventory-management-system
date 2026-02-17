@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import ServiceInvoice from '../components/invoices/ServiceInvoice';
+import Toast from '../components/common/Toast';
 import { Wrench, Plus, Trash2, Printer, X, Monitor, Cpu, DollarSign, Search, ArrowLeft, User, Smartphone, Package } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
@@ -40,6 +41,7 @@ const RepairService = () => {
     const [showInvoice, setShowInvoice] = useState(false);
     const [invoiceData, setInvoiceData] = useState(null);
     const [invoiceCustomerData, setInvoiceCustomerData] = useState(null);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     // Repair Service types management
     const defaultServiceTypes = [];
@@ -125,6 +127,25 @@ const RepairService = () => {
 
             setNewServiceType('');
             setShowAddServiceModal(false);
+            console.log('Triggering toast for Add Service Type');
+            setToast({ show: true, message: 'New service type added successfully!', type: 'success' });
+        }
+    };
+
+    const handleAddDeviceType = () => {
+        if (newDeviceType.trim()) {
+            const trimmed = newDeviceType.trim();
+            if (!customDeviceTypes.includes(trimmed)) {
+                const updated = [...customDeviceTypes, trimmed];
+                saveCustomDeviceTypes(updated);
+            }
+
+            // Auto-select the new device type
+            setDeviceType(trimmed);
+
+            setNewDeviceType('');
+            setShowAddDeviceTypeModal(false);
+            setToast({ show: true, message: 'New device type added successfully!', type: 'success' });
         }
     };
 
@@ -221,15 +242,15 @@ const RepairService = () => {
     const handleCompleteService = async () => {
         // Validation
         if (selectedServices.length === 0) {
-            alert('Please select at least one repair/service type');
+            setToast({ show: true, message: 'Please select at least one repair/service type', type: 'error' });
             return;
         }
         if (!deviceModel) {
-            alert('Please enter Device Model');
+            setToast({ show: true, message: 'Please enter Device Model', type: 'error' });
             return;
         }
         if (!deviceType) {
-            alert('Please select Device Type');
+            setToast({ show: true, message: 'Please select Device Type', type: 'error' });
             return;
         }
 
@@ -332,11 +353,11 @@ const RepairService = () => {
                 // Reset form (keep Tax and Payment Method settings)
                 resetForm();
             } else {
-                alert(`Error saving job: ${result.message}`);
+                setToast({ show: true, message: `Error saving job: ${result.message}`, type: 'error' });
             }
         } catch (error) {
             console.error('Error completing repair job:', error);
-            alert('Error completing repair job. Please try again.');
+            setToast({ show: true, message: 'Error completing repair job. Please try again.', type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -865,6 +886,14 @@ const RepairService = () => {
                     </div>
                 )
             }
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
+                />
+            )}
         </div >
     );
 };

@@ -3,6 +3,7 @@ import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import Toast from '../components/common/Toast';
 import { Plus, Edit, Trash2, User, Phone, Mail, MapPin } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
@@ -18,6 +19,7 @@ const Customers = () => {
         address: '',
         notes: '',
     });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (shopId) {
@@ -45,9 +47,13 @@ const Customers = () => {
             await loadCustomers();
             setShowModal(false);
             resetForm();
-            alert(editingCustomer ? 'Customer updated successfully!' : 'Customer created successfully!');
+            setToast({
+                show: true,
+                message: editingCustomer ? 'Customer updated successfully!' : 'Customer created successfully!',
+                type: 'success'
+            });
         } else {
-            alert('Error: ' + result.message);
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
         }
     };
 
@@ -65,8 +71,13 @@ const Customers = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this customer?')) {
-            await api.customers.delete(id);
-            await loadCustomers();
+            const result = await api.customers.delete(id);
+            if (result.success) {
+                await loadCustomers();
+                setToast({ show: true, message: 'Customer deleted successfully!', type: 'success' });
+            } else {
+                setToast({ show: true, message: 'Error deleting customer: ' + result.message, type: 'error' });
+            }
         }
     };
 
@@ -106,7 +117,11 @@ const Customers = () => {
                     onClick={() => {
                         if (currentShop && !canAddItem(customers.length, currentShop.package_type, 'customers')) {
                             const usageInfo = getUsageInfo(customers.length, currentShop.package_type, 'customers');
-                            alert(`Customer limit reached (${usageInfo.limit}). Please upgrade your package to add more customers.`);
+                            setToast({
+                                show: true,
+                                message: `Customer limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                type: 'error'
+                            });
                             return;
                         }
                         resetForm();
@@ -307,6 +322,14 @@ const Customers = () => {
                     </div>
                 </form>
             </Modal>
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
+                />
+            )}
         </div>
     );
 };
