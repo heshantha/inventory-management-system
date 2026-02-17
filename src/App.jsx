@@ -22,21 +22,7 @@ import SuperAdminDashboard from './pages/SuperAdmin/SuperAdminDashboard';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import './index.css';
-
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
-  return isAuthenticated ? children : <Navigate to="/login" />;
-};
+import ProtectedRoute from './components/Routes/ProtectedRoute';
 
 // Main Layout Component
 const MainLayout = ({ children }) => {

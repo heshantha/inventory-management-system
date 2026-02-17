@@ -64,9 +64,11 @@ const RepairService = () => {
 
     const loadCustomDeviceTypes = () => {
         try {
-            const saved = localStorage.getItem('custom_device_types');
+            const saved = localStorage.getItem('custom_device_types_v3'); // Force fresh start
             if (saved) {
                 setCustomDeviceTypes(JSON.parse(saved));
+            } else {
+                setCustomDeviceTypes([]);
             }
         } catch (error) {
             console.error('Error loading custom device types:', error);
@@ -75,30 +77,22 @@ const RepairService = () => {
 
     const saveCustomDeviceTypes = (types) => {
         try {
-            localStorage.setItem('custom_device_types', JSON.stringify(types));
+            localStorage.setItem('custom_device_types_v3', JSON.stringify(types));
             setCustomDeviceTypes(types);
         } catch (error) {
             console.error('Error saving custom device types:', error);
         }
     };
 
-    const handleAddDeviceType = () => {
-        if (newDeviceType.trim()) {
-            const trimmed = newDeviceType.trim();
-            if (!customDeviceTypes.includes(trimmed)) {
-                const updated = [...customDeviceTypes, trimmed];
-                saveCustomDeviceTypes(updated);
-            }
-            setNewDeviceType('');
-            setShowAddDeviceTypeModal(false);
-        }
-    };
+    // ...
 
     const loadCustomServiceTypes = () => {
         try {
-            const saved = localStorage.getItem('custom_repair_types'); // Changed key
+            const saved = localStorage.getItem('custom_repair_types_v3'); // Force fresh start
             if (saved) {
                 setCustomServiceTypes(JSON.parse(saved));
+            } else {
+                setCustomServiceTypes([]);
             }
         } catch (error) {
             console.error('Error loading custom repair types:', error);
@@ -107,7 +101,7 @@ const RepairService = () => {
 
     const saveCustomServiceTypes = (types) => {
         try {
-            localStorage.setItem('custom_repair_types', JSON.stringify(types)); // Changed key
+            localStorage.setItem('custom_repair_types_v3', JSON.stringify(types));
             setCustomServiceTypes(types);
         } catch (error) {
             console.error('Error saving custom repair types:', error);

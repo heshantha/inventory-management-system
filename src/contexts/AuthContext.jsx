@@ -42,17 +42,13 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (username, password) => {
-        console.log('🔐 AuthContext login called with:', { username });
         try {
             const result = await api.login({ username, password });
-            console.log('📩 Login result:', result);
 
             if (result.success) {
-                console.log('✅ Setting user in context');
                 setUser(result.user);
                 return { success: true };
             } else {
-                console.log('❌ Login failed:', result.message);
                 return { success: false, message: result.message };
             }
         } catch (error) {

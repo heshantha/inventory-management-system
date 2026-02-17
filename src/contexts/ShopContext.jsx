@@ -35,9 +35,7 @@ export const ShopProvider = ({ children }) => {
             // If user has shop_id, load the shop
             if (user.shop_id) {
                 try {
-                    console.log('Loading shop for shop_id:', user.shop_id);
                     const shop = await supabaseService.getShopById(user.shop_id);
-                    console.log('Shop loaded:', shop);
                     setCurrentShop(shop);
                 } catch (error) {
                     console.error('Error loading shop:', error);
@@ -47,7 +45,6 @@ export const ShopProvider = ({ children }) => {
                 }
             } else {
                 // User has no shop_id
-                console.log('User has no shop_id');
                 setCurrentShop(null);
                 setLoading(false);
             }

@@ -8,14 +8,9 @@ import supabaseService from './supabaseService';
 const api = {
     // Authentication
     login: async (credentials) => {
-        console.log('🚀 API Login called');
-        console.log('Is Electron?', isElectron());
-
         if (isElectron()) {
-            console.log('Using Electron login');
             return await window.electronAPI.login(credentials);
         } else {
-            console.log('Using Supabase login');
             return await supabaseService.authenticateUser(credentials.username, credentials.password);
         }
     },
