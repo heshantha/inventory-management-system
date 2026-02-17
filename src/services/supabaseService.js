@@ -629,6 +629,7 @@ class SupabaseService {
                     .select('id, sku')
                     .eq('sku', productData.sku)
                     .eq('is_active', true)
+                    .eq('shop_id', productData.shop_id)
                     .neq('id', id);
 
                 if (checkError) {
@@ -654,6 +655,9 @@ class SupabaseService {
             if (productData.min_stock_level !== undefined) {
                 updateData.min_stock_level = parseInt(productData.min_stock_level);
             }
+            if (productData.stock_quantity !== undefined) {
+                updateData.stock_quantity = parseInt(productData.stock_quantity);
+            }
 
             const { error } = await this.supabase
                 .from('products')
@@ -661,6 +665,33 @@ class SupabaseService {
                 .eq('id', id);
 
             if (error) throw error;
+
+            // Check if stock quantity has changed and record movement if so
+            if (productData.stock_quantity !== undefined) {
+                const newStock = parseInt(productData.stock_quantity);
+
+                // Get old stock to calculate difference
+                const { data: oldProduct } = await this.supabase
+                    .from('products')
+                    .select('stock_quantity')
+                    .eq('id', id)
+                    .single();
+
+                const oldStock = oldProduct ? oldProduct.stock_quantity : 0;
+
+                if (newStock !== oldStock) {
+                    const diff = newStock - oldStock;
+                    const movementType = diff > 0 ? 'in' : 'out';
+
+                    await this.createStockMovement({
+                        product_id: id,
+                        movement_type: movementType,
+                        quantity: Math.abs(diff),
+                        notes: 'Manual stock adjustment (Edit Product)'
+                    });
+                }
+            }
+
             return { success: true };
         } catch (error) {
             console.error('Error updating product:', error);
@@ -1236,10 +1267,116 @@ class SupabaseService {
         }
     }
 
+    async updateDamage(id, updates) {
+        try {
+            // Get original damage record
+            const { data: oldDamage, error: fetchError } = await this.supabase
+                .from('product_damages')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Calculate quantity difference
+            const quantityDiff = (updates.quantity || oldDamage.quantity) - oldDamage.quantity;
+
+            if (quantityDiff !== 0) {
+                // Get current product stock
+                const { data: product, error: productError } = await this.supabase
+                    .from('products')
+                    .select('stock_quantity')
+                    .eq('id', oldDamage.product_id)
+                    .single();
+
+                if (productError) throw productError;
+
+                // Validate if removing more stock
+                if (quantityDiff > 0 && quantityDiff > product.stock_quantity) {
+                    return {
+                        success: false,
+                        message: `Cannot increase damage by ${quantityDiff}. Only ${product.stock_quantity} units available.`
+                    };
+                }
+
+                // Update product stock
+                // If quantityDiff > 0 (damaged more), stock decreases (- diff)
+                // If quantityDiff < 0 (damaged less), stock increases (- (-diff) = + diff)
+                const newStock = product.stock_quantity - quantityDiff;
+
+                const { error: stockError } = await this.supabase
+                    .from('products')
+                    .update({ stock_quantity: newStock })
+                    .eq('id', oldDamage.product_id);
+
+                if (stockError) throw stockError;
+
+                // Record stock movement
+                await this.createStockMovement({
+                    product_id: oldDamage.product_id,
+                    movement_type: 'adjustment',
+                    quantity: -quantityDiff, // Negative because damage reduces stock
+                    reference_type: 'damage_update',
+                    reference_id: id,
+                    notes: `Damage updated: ${quantityDiff > 0 ? 'Increased' : 'Decreased'} by ${Math.abs(quantityDiff)}`
+                });
+            }
+
+            // Update damage record
+            const { data, error } = await this.supabase
+                .from('product_damages')
+                .update({
+                    ...updates
+                })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error updating damage:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
     async deleteDamage(id) {
         try {
-            // Note: Deleting damage records should be restricted to admin users
-            // You may want to adjust stock back when deleting a damage record
+            // Get damage record to restore stock
+            const { data: damage, error: fetchError } = await this.supabase
+                .from('product_damages')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Restore stock
+            const { data: product, error: productError } = await this.supabase
+                .from('products')
+                .select('stock_quantity')
+                .eq('id', damage.product_id)
+                .single();
+
+            if (!productError && product) {
+                await this.supabase
+                    .from('products')
+                    .update({ stock_quantity: product.stock_quantity + damage.quantity })
+                    .eq('id', damage.product_id);
+
+                // Record stock movement (Review: 'in' or 'adjustment'?)
+                // Since damage reduced stock, restoring it is an 'in' or positive adjustment
+                await this.createStockMovement({
+                    product_id: damage.product_id,
+                    movement_type: 'adjustment',
+                    quantity: damage.quantity,
+                    reference_type: 'damage_deletion',
+                    notes: `Restored from deleted damage record #${id}`
+                });
+            }
+
+            // Delete record
             const { error } = await this.supabase
                 .from('product_damages')
                 .delete()

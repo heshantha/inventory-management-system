@@ -42,6 +42,7 @@ const Categories = () => {
             await loadCategories();
             setShowModal(false);
             resetForm();
+            alert(editingCategory ? 'Category updated successfully!' : 'Category created successfully!');
         } else {
             alert('Error: ' + result.message);
         }

@@ -45,6 +45,7 @@ const Customers = () => {
             await loadCustomers();
             setShowModal(false);
             resetForm();
+            alert(editingCustomer ? 'Customer updated successfully!' : 'Customer created successfully!');
         } else {
             alert('Error: ' + result.message);
         }

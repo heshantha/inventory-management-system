@@ -134,6 +134,7 @@ const Users = () => {
         }
 
         loadUsers();
+        alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
         handleCloseModal();
     };
 

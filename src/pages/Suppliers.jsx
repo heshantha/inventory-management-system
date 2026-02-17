@@ -67,6 +67,7 @@ const Suppliers = () => {
             await loadSuppliers();
             setShowModal(false);
             resetForm();
+            alert(editingSupplier ? 'Supplier updated successfully!' : 'Supplier created successfully!');
         } else {
             alert('Error: ' + result.message);
         }

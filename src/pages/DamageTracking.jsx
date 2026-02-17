@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import { AlertTriangle, Plus, Trash2, TrendingDown, Package, DollarSign } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, TrendingDown, Package, DollarSign, Edit } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
 const DamageTracking = () => {
@@ -15,6 +15,7 @@ const DamageTracking = () => {
     const [stats, setStats] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [editingDamage, setEditingDamage] = useState(null);
     const [formData, setFormData] = useState({
         product_id: '',
         quantity: 1,
@@ -69,31 +70,49 @@ const DamageTracking = () => {
             return;
         }
 
-        const result = await api.damages.create({
+        const dataToSubmit = {
             shop_id: shopId,
             product_id: formData.product_id,
             quantity: parseInt(formData.quantity),
             reason: formData.reason,
             notes: formData.notes,
             recorded_by: user?.id
-        });
+        };
+
+        let result;
+        if (editingDamage) {
+            result = await api.damages.update(editingDamage.id, dataToSubmit);
+        } else {
+            result = await api.damages.create(dataToSubmit);
+        }
 
         if (result.success) {
             await loadData();
             setShowModal(false);
             resetForm();
-            alert('Damage recorded successfully');
+            alert(editingDamage ? 'Damage record updated successfully!' : 'Damage recorded successfully!');
         } else {
             alert('Error: ' + result.message);
         }
     };
 
+    const handleEdit = (damage) => {
+        setEditingDamage(damage);
+        setFormData({
+            product_id: damage.product_id,
+            quantity: damage.quantity,
+            reason: damage.reason,
+            notes: damage.notes || ''
+        });
+        setShowModal(true);
+    };
+
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this damage record?')) {
+        if (window.confirm('Are you sure you want to delete this damage record? This will restore the stock.')) {
             const result = await api.damages.delete(id);
             if (result.success) {
                 await loadData();
-                alert('Damage record deleted');
+                alert('Damage record deleted and stock restored successfully!');
             } else {
                 alert('Error deleting record: ' + result.message);
             }
@@ -107,6 +126,7 @@ const DamageTracking = () => {
             reason: 'Broken',
             notes: ''
         });
+        setEditingDamage(null);
     };
 
     const formatDate = (dateString) => {
@@ -273,13 +293,21 @@ const DamageTracking = () => {
                                             {damage.recorded_by_name || '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {user?.role === 'super_admin' || user?.role === 'admin' ? (
-                                                <button
-                                                    onClick={() => handleDelete(damage.id)}
-                                                    className="text-red-600 hover:text-red-900"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                            {user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'shop_owner' ? (
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => handleEdit(damage)}
+                                                        className="text-primary-600 hover:text-primary-900"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(damage.id)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <span className="text-gray-400">-</span>
                                             )}
@@ -299,7 +327,7 @@ const DamageTracking = () => {
                     setShowModal(false);
                     resetForm();
                 }}
-                title="Record Product Damage"
+                title={editingDamage ? 'Edit Damage Record' : 'Record Product Damage'}
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -378,7 +406,7 @@ const DamageTracking = () => {
                             Cancel
                         </Button>
                         <Button type="submit" variant="primary">
-                            Record Damage
+                            {editingDamage ? 'Update Damage' : 'Record Damage'}
                         </Button>
                     </div>
                 </form>

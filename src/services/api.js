@@ -297,6 +297,13 @@ const api = {
                 return await supabaseService.createDamage(damageData);
             }
         },
+        update: async (id, damageData) => {
+            if (isElectron()) {
+                return await window.electronAPI.damages.update(id, damageData);
+            } else {
+                return await supabaseService.updateDamage(id, damageData);
+            }
+        },
         delete: async (id) => {
             if (isElectron()) {
                 return await window.electronAPI.damages.delete(id);

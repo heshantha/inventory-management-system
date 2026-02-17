@@ -73,9 +73,10 @@ const Products = () => {
             supplier_id: formData.supplier_id || null,
         };
 
-        const dataToSubmit = editingProduct
-            ? sanitizedData
-            : { ...sanitizedData, shop_id: shopId }; // Add shop_id for new products
+        const dataToSubmit = {
+            ...sanitizedData,
+            shop_id: shopId
+        };
 
         const result = editingProduct
             ? await api.products.update(editingProduct.id, dataToSubmit)
@@ -85,6 +86,7 @@ const Products = () => {
             await loadData();
             setShowModal(false);
             resetForm();
+            alert(editingProduct ? 'Product updated successfully!' : 'Product created successfully!');
         } else {
             alert('Error: ' + result.message);
         }
@@ -431,7 +433,6 @@ const Products = () => {
                                 value={formData.stock_quantity}
                                 onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                disabled={!!editingProduct}
                             />
                         </div>
                         <div>
