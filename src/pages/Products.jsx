@@ -237,71 +237,79 @@ const Products = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {products.map((product) => (
-                                <tr key={product.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <Package className="text-gray-400 mr-3" size={20} />
-                                            <div>
-                                                <div className="font-medium text-gray-900">{product.name}</div>
-                                                {product.description && (
-                                                    <div className="text-sm text-gray-500 truncate max-w-xs">
-                                                        {product.description}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {product.sku}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {product.category_name || '-'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-semibold text-gray-900">
-                                            {formatCurrency(product.selling_price)}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            Cost: {formatCurrency(product.cost_price)}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <span className={`font-semibold ${product.stock_quantity <= product.min_stock_level ? 'text-red-600' : 'text-gray-900'}`}>
-                                                {product.stock_quantity}
-                                            </span>
-                                            {product.stock_quantity <= product.min_stock_level && (
-                                                <AlertTriangle className="ml-2 text-red-500" size={16} />
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button
-                                            onClick={() => handleEdit(product)}
-                                            className="text-primary-600 hover:text-primary-900"
-                                            title="Edit Product"
-                                        >
-                                            <Edit size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleMarkAsDamaged(product)}
-                                            className="text-orange-600 hover:text-orange-900"
-                                            title="Mark as Damaged"
-                                            disabled={product.stock_quantity === 0}
-                                        >
-                                            <XCircle size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(product.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                            title="Delete Product"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                            {products.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                        No products found. Click "Add Product" to create one.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                products.map((product) => (
+                                    <tr key={product.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <Package className="text-gray-400 mr-3" size={20} />
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{product.name}</div>
+                                                    {product.description && (
+                                                        <div className="text-sm text-gray-500 truncate max-w-xs">
+                                                            {product.description}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {product.sku}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {product.category_name || '-'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-semibold text-gray-900">
+                                                {formatCurrency(product.selling_price)}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                Cost: {formatCurrency(product.cost_price)}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <span className={`font-semibold ${product.stock_quantity <= product.min_stock_level ? 'text-red-600' : 'text-gray-900'}`}>
+                                                    {product.stock_quantity}
+                                                </span>
+                                                {product.stock_quantity <= product.min_stock_level && (
+                                                    <AlertTriangle className="ml-2 text-red-500" size={16} />
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <button
+                                                onClick={() => handleEdit(product)}
+                                                className="text-primary-600 hover:text-primary-900"
+                                                title="Edit Product"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleMarkAsDamaged(product)}
+                                                className="text-orange-600 hover:text-orange-900"
+                                                title="Mark as Damaged"
+                                                disabled={product.stock_quantity === 0}
+                                            >
+                                                <XCircle size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(product.id)}
+                                                className="text-red-600 hover:text-red-900"
+                                                title="Delete Product"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
