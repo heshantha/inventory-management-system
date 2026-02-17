@@ -7,7 +7,7 @@ import Invoice from '../components/Invoice/Invoice';
 import { Search, Eye, Calendar, DollarSign, ShoppingBag, Printer, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sales = () => {
-    const { shopId } = useShop();
+    const { shopId, currentShop } = useShop();
     const [sales, setSales] = useState([]);
     const [filteredSales, setFilteredSales] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -318,6 +318,7 @@ const Sales = () => {
                 <Invoice
                     invoice={selectedInvoice}
                     onClose={() => setShowInvoice(false)}
+                    currentShop={currentShop}
                 />
             )}
         </div>
