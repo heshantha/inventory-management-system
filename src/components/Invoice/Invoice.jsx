@@ -176,11 +176,12 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                         </div>
 
                         {/* Footer */}
-                        <div className="border-t-2 border-gray-300 pt-4 mt-8 text-center">
-                            <p className="text-sm text-gray-600">Thank you for your business!</p>
-                            <p className="text-xs text-gray-400 mt-2">
-                                Developed by HL Web Studio
-                            </p>
+                        {/* Footer */}
+                        <div className="mt-4 md:mt-8 pt-4 border-t-2 border-gray-200 text-center">
+                            <p className="font-bold text-gray-800 text-sm md:text-base">{currentShop?.name}</p>
+                            <p className="text-gray-600 text-xs md:text-sm">{currentShop?.address}</p>
+                            <p className="text-gray-600 text-xs md:text-sm">Tel: {currentShop?.phone}</p>
+                            <p className="text-gray-500 text-[10px] md:text-xs mt-2">Thank you for your business!</p>
                         </div>
                     </div>
                 </div>

@@ -326,12 +326,21 @@ const Garage = () => {
                 invoice_number: createdSale?.invoice_number || 'PENDING',
                 created_at: createdSale?.created_at || new Date().toISOString(),
                 // Add garage specific fields for the invoice display (ServiceInvoice template likely uses them)
-                vehicle_number: vehicleNumber,
                 vehicle_type: vehicleType,
                 mileage: mileage,
                 items_used: itemsUsed, // Keep original format for ServiceInvoice if needed, or map correctly
                 service_type: selectedServices.map(s => s.type).join(', '),
+                service_warranty: selectedServices
+                    .map(s => s.warranty ? `${s.type}: ${s.warranty}` : null)
+                    .filter(Boolean)
+                    .join('; '),
+                parts_total: totals.partsTotal,
+                service_charges: totals.serviceCharges,
+                labour_charges: totals.labourCharges,
             };
+
+            console.log('DEBUG: totals', totals);
+            console.log('DEBUG: invoiceDataFull', invoiceDataFull);
 
             // Store customer data for invoice (before resetting)
             setInvoiceCustomerData(selectedCustomer);

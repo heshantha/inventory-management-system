@@ -4,6 +4,7 @@ import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import { Download, Printer } from 'lucide-react';
 
 const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = 'garage' }) => {
+    console.log('DEBUG ServiceInvoice serviceData:', serviceData);
     const handlePrint = () => {
         window.print();
     };
@@ -216,8 +217,14 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                     </div>
 
                     {/* Footer */}
-                </div>
+                    <div className="mt-4 md:mt-8 pt-4 border-t-2 border-gray-200 text-center">
+                        <p className="font-bold text-gray-800 text-sm md:text-base">{shopData.name}</p>
+                        <p className="text-gray-600 text-xs md:text-sm">{shopData.address}</p>
+                        <p className="text-gray-600 text-xs md:text-sm">Tel: {shopData.phone}</p>
+                        <p className="text-gray-500 text-[10px] md:text-xs mt-2">Thank you for your business!</p>
+                    </div>
 
+                </div>
             </div>
 
             {/* Print Styles */}
