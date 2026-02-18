@@ -103,11 +103,7 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                     </div>
                                     <div className="text-left sm:text-right space-y-1">
                                         {!hideCustomerCopy && (
-                                            <div className="flex justify-end">
-                                                <span className="nevil-blue-bg text-white px-3 py-1.5 text-xs font-bold rounded inline-block">
-                                                    CUSTOMER COPY
-                                                </span>
-                                            </div>
+                                          <div></div>
                                         )}
                                         <h2 className="text-base font-bold text-[#1e3a8a]">INVOICE</h2>
                                         <div className="text-[10px] md:text-xs space-y-0.5 text-gray-800">
