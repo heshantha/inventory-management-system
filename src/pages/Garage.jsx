@@ -79,11 +79,17 @@ const Garage = () => {
         loadCustomServiceTypes();
     }, [shopId]);
 
+    const getServiceTypeStorageKey = () => {
+        return `custom_service_types_shop_${shopId || 'default'}`;
+    };
+
     const loadCustomServiceTypes = () => {
         try {
-            const saved = localStorage.getItem('custom_service_types');
+            const saved = localStorage.getItem(getServiceTypeStorageKey());
             if (saved) {
                 setCustomServiceTypes(JSON.parse(saved));
+            } else {
+                setCustomServiceTypes([]);
             }
         } catch (error) {
             console.error('Error loading custom service types:', error);
@@ -92,7 +98,7 @@ const Garage = () => {
 
     const saveCustomServiceTypes = (types) => {
         try {
-            localStorage.setItem('custom_service_types', JSON.stringify(types));
+            localStorage.setItem(getServiceTypeStorageKey(), JSON.stringify(types));
             setCustomServiceTypes(types);
         } catch (error) {
             console.error('Error saving custom service types:', error);
