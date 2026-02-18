@@ -60,8 +60,9 @@ const Sidebar = () => {
     // Add Garage menu item for Service Center shops only
     const businessType = currentShop?.business_type?.toLowerCase();
     if (businessType === 'service center' || businessType === 'garage' || businessType === 'nevil windscreen center') {
+        const garageLabel = businessType === 'nevil windscreen center' ? 'Repair Service' : 'Garage';
         // Insert Garage after POS (index 2)
-        shopMenu.splice(2, 0, { path: '/garage', icon: Wrench, label: 'Garage', roles: ['shop_owner', 'cashier', 'manager'] });
+        shopMenu.splice(2, 0, { path: '/garage', icon: Wrench, label: garageLabel, roles: ['shop_owner', 'cashier', 'manager'] });
     }
 
     // Add Repair Service menu for Computer Shop

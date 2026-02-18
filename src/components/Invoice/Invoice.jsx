@@ -17,8 +17,11 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
     if (!invoice) return null;
 
     const isNevilWindscreen = currentShop?.business_type === 'Nevil Windscreen Center';
-    const invoiceDate = new Date(invoice.created_at || Date.now());
-    const dateStr = invoiceDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+    const hideCustomerCopy = Boolean(invoice?.hide_customer_copy);
+    const invoiceDate = invoice?.created_at ? new Date(invoice.created_at) : null;
+    const dateStr = invoiceDate
+        ? invoiceDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+        : '—';
 
     const handlePrint = () => {
         window.print();
@@ -63,39 +66,34 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                 <div className="flex-1 overflow-y-auto">
                     <div className={`service-invoice p-4 md:p-6 lg:p-8 ${isNevilWindscreen ? 'nevil-invoice' : ''}`}>
                         {isNevilWindscreen ? (
-                            /* --- Nevil Windscreen Center invoice layout --- */
+                            /* --- Nevil Windscreen Center invoice layout (match reference image) --- */
                             <>
-                                {/* Top header: Logo | Company name | CUSTOMER COPY */}
-                                <div className="flex items-start justify-between gap-2 mb-1 border-b-2 border-blue-800 pb-2">
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <div className="w-12 h-12 nevil-blue-bg flex items-center justify-center text-white font-bold text-lg rounded">
-                                            {getShopInitials(currentShop?.name)}
-                                        </div>
-                                        <div>
-                                            <h1 className="text-lg md:text-xl font-bold text-[#1e3a8a] leading-tight">
-                                                {(currentShop?.name || 'Nevil Windscreen Center').toUpperCase()}
-                                            </h1>
-                                            <p className="text-[10px] md:text-xs text-gray-700 mt-0.5">
-                                                {currentShop?.address || ''}
-                                            </p>
-                                            <p className="text-[10px] md:text-xs text-gray-700">
-                                                Tel: {[currentShop?.phone, currentShop?.phone2, currentShop?.phone3].filter(Boolean).join(' / ') || '—'}
-                                            </p>
-                                            {currentShop?.email && (
-                                                <p className="text-[10px] md:text-xs text-gray-700">{currentShop.email}</p>
-                                            )}
-                                        </div>
+                                {/* Company block: Logo | Company name, address, tel, email — then blue line only */}
+                                <div className="flex items-start gap-2 mb-0 pb-2 border-b-2 border-blue-800">
+                                    <div className="w-12 h-12 nevil-blue-bg flex items-center justify-center text-white font-bold text-lg rounded flex-shrink-0">
+                                        {getShopInitials(currentShop?.name)}
                                     </div>
-                                    <div className="nevil-blue-bg text-white px-3 py-1.5 text-xs font-bold rounded flex-shrink-0">
-                                        CUSTOMER COPY
+                                    <div>
+                                        <h1 className="text-lg md:text-xl font-bold text-[#1e3a8a] leading-tight">
+                                            {(currentShop?.name || 'Nevil Windscreen Center').toUpperCase()}
+                                        </h1>
+                                        <p className="text-[10px] md:text-xs text-gray-800 mt-0.5">
+                                            {currentShop?.address || ''}
+                                        </p>
+                                        <p className="text-[10px] md:text-xs text-gray-800">
+                                            Tel: {[currentShop?.phone, currentShop?.phone2, currentShop?.phone3].filter(Boolean).join(' / ') || '—'}
+                                        </p>
+                                        {currentShop?.email && (
+                                            <p className="text-[10px] md:text-xs text-gray-800">{currentShop.email}</p>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* TO: and INVOICE details row */}
+                                {/* TO: (left) | CUSTOMER COPY + INVOICE details (right) */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 mb-2">
                                     <div>
                                         <p className="text-xs font-bold text-gray-800 mb-0.5">TO:</p>
-                                        <p className="text-xs font-medium">{invoice.customer_name || 'Walk-in Customer'}</p>
+                                        <p className="text-xs font-medium text-gray-800">{invoice.customer_name || 'Walk-in Customer'}</p>
                                         {invoice.customer_address && (
                                             <p className="text-[10px] text-gray-700">{invoice.customer_address.split(',').map(s => s.trim()).join(', ')}</p>
                                         )}
@@ -103,13 +101,21 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                             <p className="text-[10px] text-gray-700">{invoice.customer_phone}</p>
                                         )}
                                     </div>
-                                    <div className="text-left sm:text-right">
+                                    <div className="text-left sm:text-right space-y-1">
+                                        {!hideCustomerCopy && (
+                                            <div className="flex justify-end">
+                                                <span className="nevil-blue-bg text-white px-3 py-1.5 text-xs font-bold rounded inline-block">
+                                                    CUSTOMER COPY
+                                                </span>
+                                            </div>
+                                        )}
                                         <h2 className="text-base font-bold text-[#1e3a8a]">INVOICE</h2>
                                         <div className="text-[10px] md:text-xs space-y-0.5 text-gray-800">
                                             <p>JOB BY: 00000</p>
                                             <p>USER: {invoice.cashier_name || currentShop?.owner_name || '—'}</p>
                                             <p>DATE: {dateStr}</p>
                                             <p>INVOICE NO: {invoice.invoice_number || '—'}</p>
+
 
                                             {currentShop?.vat_reg_no && <p>V.A.T Reg. No.: {currentShop.vat_reg_no}</p>}
                                         </div>
@@ -140,7 +146,9 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                                 return (
                                                     <tr key={index}>
                                                         <td className="border border-gray-400 px-1 py-0.5">{index + 1}</td>
-                                                        <td className="border border-gray-400 px-1 py-0.5">{item.sku || '—'}</td>
+                                                        <td className="border border-gray-400 px-1 py-0.5">
+                                                            {item.sku || item.code || item.name || item.product_name || '—'}
+                                                        </td>
                                                         <td className="border border-gray-400 px-1 py-0.5">{item.name || item.product_name || '—'}</td>
                                                         <td className="border border-gray-400 px-1 py-0.5 text-center">{Number(item.quantity)}</td>
                                                         <td className="border border-gray-400 px-1 py-0.5 text-right">{formatCurrency(item.unit_price)}</td>
@@ -175,9 +183,9 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                     <div><span className="font-semibold">Received in good condition</span><div className="h-4 border-b border-gray-400 w-28 mt-0.5" /></div>
                                 </div>
 
-                                {/* Text before blue line */}
-                                <p className="text-[12px] text-gray-700 text-center mt-2 mb-1">
-                                   Dealers in japanes high Quality WIndscreen,   Door & sode Glasses, All Type of Beading and Motor Spare Parts Accessories
+                                {/* Dealer tagline (above blue footer) */}
+                                <p className="text-[10px] md:text-xs text-gray-800 text-center mt-2 mb-1">
+                                    Dealers in japanes high Quality Windscreen, Door & sode Glasses, All Type of Beading and Motor Spare Parts Accessories
                                 </p>
 
                                 {/* Blue box with disclaimer text */}
@@ -200,10 +208,10 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                         <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-primary-600">INVOICE</h2>
                                         <p className="font-semibold text-gray-800 mt-1">#{invoice.invoice_number}</p>
                                         <p className="text-xs md:text-sm text-gray-600 mt-2">
-                                            Date: {invoiceDate.toLocaleDateString()}
+                                            Date: {invoiceDate ? invoiceDate.toLocaleDateString() : '—'}
                                         </p>
                                         <p className="text-xs md:text-sm text-gray-600">
-                                            Time: {invoiceDate.toLocaleTimeString()}
+                                            Time: {invoiceDate ? invoiceDate.toLocaleTimeString() : '—'}
                                         </p>
                                     </div>
                                 </div>
@@ -358,7 +366,7 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                             margin: 0;
                             z-index: 9999;
                             background: white;
-                            padding: ${currentShop?.business_type === 'Nevil Windscreen Center' ? '0' : ['Service Center', 'Computer Shop', 'Nevil Windscreen Center'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
+                            padding: ${currentShop?.business_type === 'Nevil Windscreen Center' ? '0' : ['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
                         }
                         
                         /* Nevil Windscreen Center - full A4 page fill */

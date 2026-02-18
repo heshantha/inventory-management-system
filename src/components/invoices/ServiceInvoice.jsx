@@ -2,9 +2,81 @@ import React from 'react';
 import { formatCurrency } from '../../utils/calculations';
 import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import { Download, Printer } from 'lucide-react';
+import Invoice from '../Invoice/Invoice';
 
 const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = 'garage' }) => {
     console.log('DEBUG ServiceInvoice serviceData:', serviceData);
+    const isNevilWindscreen = shopData?.business_type === 'Nevil Windscreen Center';
+    const serviceCreatedAt = serviceData?.created_at || null;
+    const itemsUsed = serviceData?.items_used || [];
+    const computedSubtotal = (serviceData?.parts_total || 0) + (serviceData?.service_charges || 0) + (serviceData?.labour_charges || 0);
+    const serviceCharges = Number(serviceData?.service_charges || 0);
+    const labourCharges = Number(serviceData?.labour_charges || 0);
+    const nevilExtraRows = [
+        ...(serviceCharges > 0 ? [{
+            name: 'Service Charges',
+            sku: 'SRV-CHG',
+            quantity: 1,
+            unit_price: serviceCharges,
+            discount_amount: 0,
+            total_price: serviceCharges,
+        }] : []),
+        ...(labourCharges > 0 ? [{
+            name: 'Labour Charges',
+            sku: 'LAB-CHG',
+            quantity: 1,
+            unit_price: labourCharges,
+            discount_amount: 0,
+            total_price: labourCharges,
+        }] : []),
+    ];
+
+    const mappedInvoiceForNevil = {
+        invoice_number: serviceData?.invoice_number || 'INV-0000',
+        created_at: serviceData?.created_at,
+        vehicle_number: serviceData?.vehicle_number || null,
+        customer_name: serviceData?.customer_name || customerData?.name || 'Walk-in Customer',
+        customer_phone: serviceData?.customer_phone || customerData?.phone || null,
+        customer_address: serviceData?.customer_address || customerData?.address || null,
+        cashier_name: serviceData?.cashier_name || null,
+        hide_customer_copy: true,
+        items: [
+            ...nevilExtraRows,
+            ...itemsUsed.map((item) => {
+                const quantity = Number(item?.quantity || 0);
+                const unitPrice = Number(item?.unit_price ?? item?.price ?? 0);
+                const discountAmount = Number(item?.discount_amount || 0);
+                const rawTotal = item?.total ?? item?.total_price;
+                return {
+                    ...item,
+                    name: item?.name || item?.product_name || 'Service Item',
+                    sku: item?.sku || item?.code || '',
+                    quantity,
+                    unit_price: unitPrice,
+                    discount_amount: discountAmount,
+                    total_price: Number(rawTotal ?? (quantity * unitPrice - discountAmount)),
+                };
+            }),
+        ],
+        subtotal: Number(serviceData?.subtotal ?? computedSubtotal),
+        discount_amount: Number(serviceData?.discount_amount || 0),
+        tax_amount: Number(serviceData?.tax_amount || 0),
+        total_amount: Number(serviceData?.total_amount ?? computedSubtotal),
+        payment_method: serviceData?.payment_method || 'cash',
+        warranty: serviceData?.service_warranty || null,
+    };
+
+    // Nevil garage/service invoices should use the same layout as POS invoice.
+    if (isNevilWindscreen) {
+        return (
+            <Invoice
+                invoice={mappedInvoiceForNevil}
+                onClose={onClose}
+                currentShop={shopData}
+            />
+        );
+    }
+
     const handlePrint = () => {
         window.print();
     };
@@ -70,10 +142,10 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                         <div className="text-left sm:text-right w-full sm:w-auto">
                             <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-primary-600">SERVICE INVOICE</h2>
                             <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">
-                                Date: {new Date(serviceData.created_at || Date.now()).toLocaleDateString()}
+                                Date: {serviceCreatedAt ? new Date(serviceCreatedAt).toLocaleDateString() : '—'}
                             </p>
                             <p className="text-xs md:text-sm text-gray-600">
-                                Time: {new Date(serviceData.created_at || Date.now()).toLocaleTimeString()}
+                                Time: {serviceCreatedAt ? new Date(serviceCreatedAt).toLocaleTimeString() : '—'}
                             </p>
                         </div>
                     </div>

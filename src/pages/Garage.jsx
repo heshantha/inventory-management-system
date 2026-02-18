@@ -13,6 +13,8 @@ const Garage = () => {
     const { user } = useAuth();
     const { shopId, currentShop } = useShop();
     const navigate = useNavigate();
+    const isNevilWindscreen = currentShop?.business_type === 'Nevil Windscreen Center';
+    const servicePageTitle = isNevilWindscreen ? 'Repair Service' : 'Garage Service';
 
     // Form states
     const [selectedServices, setSelectedServices] = useState([]);
@@ -161,7 +163,10 @@ const Garage = () => {
     };
 
     // Combine default and custom service types
-    const allServiceTypes = [...defaultServiceTypes, ...customServiceTypes];
+    // Nevil uses only custom-added service types (no default preset list).
+    const allServiceTypes = isNevilWindscreen
+        ? [...customServiceTypes]
+        : [...defaultServiceTypes, ...customServiceTypes];
 
     const loadData = async () => {
         const [productsData, customersData] = await Promise.all([
@@ -209,13 +214,15 @@ const Garage = () => {
     // Calculate totals
     const calculateTotals = () => {
         const partsTotal = itemsUsed.reduce((sum, item) => sum + item.total, 0);
-        const subtotal = partsTotal + parseFloat(serviceCharges) + parseFloat(labourCharges);
+        const parsedServiceCharges = parseFloat(serviceCharges) || 0;
+        const parsedLabourCharges = isNevilWindscreen ? 0 : (parseFloat(labourCharges) || 0);
+        const subtotal = partsTotal + parsedServiceCharges + parsedLabourCharges;
         const total = subtotal - parseFloat(discount);
 
         return {
             partsTotal,
-            serviceCharges: parseFloat(serviceCharges),
-            labourCharges: parseFloat(labourCharges),
+            serviceCharges: parsedServiceCharges,
+            labourCharges: parsedLabourCharges,
             subtotal,
             discount: parseFloat(discount),
             total,
@@ -228,13 +235,15 @@ const Garage = () => {
             setToast({ show: true, message: 'Please select at least one service type', type: 'error' });
             return;
         }
-        if (!vehicleNumber) {
-            setToast({ show: true, message: 'Please enter vehicle number', type: 'error' });
-            return;
-        }
-        if (!vehicleType) {
-            setToast({ show: true, message: 'Please select vehicle type', type: 'error' });
-            return;
+        if (!isNevilWindscreen) {
+            if (!vehicleNumber) {
+                setToast({ show: true, message: 'Please enter vehicle number', type: 'error' });
+                return;
+            }
+            if (!vehicleType) {
+                setToast({ show: true, message: 'Please select vehicle type', type: 'error' });
+                return;
+            }
         }
 
         setLoading(true);
@@ -280,7 +289,9 @@ const Garage = () => {
                 // 2. Service Charges
                 {
                     product_id: null,
-                    name: `Service Charges: ${selectedServices.map(s => s.type).join(', ')}`,
+                    name: !isNevilWindscreen && selectedServices.length > 0
+                        ? `Service Charges: ${selectedServices.map(s => s.type).join(', ')}`
+                        : 'Service Charges',
                     quantity: 1,
                     unit_price: totals.serviceCharges,
                     total_price: totals.serviceCharges
@@ -294,13 +305,13 @@ const Garage = () => {
                     total_price: totals.labourCharges
                 } : null,
                 // 4. Vehicle Details (stored as 0 price item for record)
-                {
+                ...(!isNevilWindscreen && (vehicleNumber || vehicleType || mileage) ? [{
                     product_id: null,
                     name: `Vehicle: ${vehicleNumber} (${vehicleType}) - ${mileage}km`,
                     quantity: 1,
                     unit_price: 0,
                     total_price: 0
-                }
+                }] : [])
             ].filter(Boolean);
 
             const saleData = {
@@ -329,11 +340,13 @@ const Garage = () => {
                 vehicle_type: vehicleType,
                 mileage: mileage,
                 items_used: itemsUsed, // Keep original format for ServiceInvoice if needed, or map correctly
-                service_type: selectedServices.map(s => s.type).join(', '),
-                service_warranty: selectedServices
-                    .map(s => s.warranty ? `${s.type}: ${s.warranty}` : null)
-                    .filter(Boolean)
-                    .join('; '),
+                service_type: !isNevilWindscreen ? selectedServices.map(s => s.type).join(', ') : '',
+                service_warranty: !isNevilWindscreen
+                    ? selectedServices
+                        .map(s => s.warranty ? `${s.type}: ${s.warranty}` : null)
+                        .filter(Boolean)
+                        .join('; ')
+                    : '',
                 parts_total: totals.partsTotal,
                 service_charges: totals.serviceCharges,
                 labour_charges: totals.labourCharges,
@@ -382,9 +395,11 @@ const Garage = () => {
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 flex items-center">
                     <Wrench className="mr-3" size={32} />
-                    Garage Service
+                    {servicePageTitle}
                 </h1>
-                <p className="text-gray-600 mt-1">Manage vehicle services and repairs</p>
+                <p className="text-gray-600 mt-1">
+                    {isNevilWindscreen ? 'Manage repair services' : 'Manage vehicle services and repairs'}
+                </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -395,93 +410,92 @@ const Garage = () => {
                         <h2 className="text-lg font-semibold text-gray-800 mb-4">Service Information</h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Service Type */}
                             {/* Service Types & Warranties */}
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Service Types & Warranties *
-                                </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Service Types & Warranties *
+                                    </label>
 
-                                {/* Selected Services List */}
-                                {selectedServices.length > 0 && (
-                                    <div className="space-y-3 mb-4">
-                                        {selectedServices.map((service, index) => (
-                                            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                <div className="flex-1 font-medium text-gray-800">
-                                                    {service.type}
-                                                </div>
-                                                <div className="w-48">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Warranty (e.g. 6mo)"
-                                                        value={service.warranty}
-                                                        onChange={(e) => {
-                                                            const updated = [...selectedServices];
-                                                            updated[index].warranty = e.target.value;
-                                                            setSelectedServices(updated);
+                                    {/* Selected Services List */}
+                                    {selectedServices.length > 0 && (
+                                        <div className="space-y-3 mb-4">
+                                            {selectedServices.map((service, index) => (
+                                                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <div className="flex-1 font-medium text-gray-800">
+                                                        {service.type}
+                                                    </div>
+                                                    <div className="w-48">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Warranty (e.g. 6mo)"
+                                                            value={service.warranty}
+                                                            onChange={(e) => {
+                                                                const updated = [...selectedServices];
+                                                                updated[index].warranty = e.target.value;
+                                                                setSelectedServices(updated);
+                                                            }}
+                                                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newServices = [...selectedServices];
+                                                            newServices.splice(index, 1);
+                                                            setSelectedServices(newServices);
                                                         }}
-                                                        className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500"
-                                                    />
+                                                        className="text-gray-400 hover:text-red-600 p-1"
+                                                        title="Remove service"
+                                                    >
+                                                        <X size={18} />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const newServices = [...selectedServices];
-                                                        newServices.splice(index, 1);
-                                                        setSelectedServices(newServices);
-                                                    }}
-                                                    className="text-gray-400 hover:text-red-600 p-1"
-                                                    title="Remove service"
-                                                >
-                                                    <X size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    )}
 
-                                {/* Add Service Control */}
-                                <div className="flex gap-2">
-                                    <select
-                                        value={currentServiceSelection}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value && !selectedServices.some(s => s.type === value)) {
-                                                setSelectedServices([...selectedServices, { type: value, warranty: '' }]);
-                                            }
-                                            setCurrentServiceSelection('');
-                                        }}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    >
-                                        <option value="">Select Service Type to Add...</option>
-                                        {allServiceTypes.map((type) => (
-                                            <option
-                                                key={type}
-                                                value={type}
-                                                disabled={selectedServices.some(s => s.type === type)}
-                                            >
-                                                {type}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddServiceModal(true)}
-                                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-1"
-                                        title="Add new service type"
-                                    >
-                                        <Plus size={20} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowManageServiceTypesModal(true)}
-                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-1"
-                                        title="Manage repair types"
-                                    >
-                                        <Settings size={20} />
-                                    </button>
+                                    {/* Add Service Control */}
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={currentServiceSelection}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value && !selectedServices.some(s => s.type === value)) {
+                                                    setSelectedServices([...selectedServices, { type: value, warranty: '' }]);
+                                                }
+                                                setCurrentServiceSelection('');
+                                            }}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        >
+                                            <option value="">Select Service Type to Add...</option>
+                                            {allServiceTypes.map((type) => (
+                                                <option
+                                                    key={type}
+                                                    value={type}
+                                                    disabled={selectedServices.some(s => s.type === type)}
+                                                >
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddServiceModal(true)}
+                                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-1"
+                                            title="Add new service type"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowManageServiceTypesModal(true)}
+                                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-1"
+                                            title="Manage repair types"
+                                        >
+                                            <Settings size={20} />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
 
                             {/* Customer */}
                             <div>
@@ -508,58 +522,60 @@ const Garage = () => {
                     </div>
 
                     {/* Vehicle Information */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Vehicle Information</h2>
+                    {!isNevilWindscreen && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h2 className="text-lg font-semibold text-gray-800 mb-4">Vehicle Information</h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Vehicle Number */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Vehicle Number *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={vehicleNumber}
-                                    onChange={(e) => setVehicleNumber(e.target.value)}
-                                    placeholder="e.g., ABC-1234"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    required
-                                />
-                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Vehicle Number */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Vehicle Number *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={vehicleNumber}
+                                        onChange={(e) => setVehicleNumber(e.target.value)}
+                                        placeholder="e.g., ABC-1234"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    />
+                                </div>
 
-                            {/* Mileage */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Mileage (km)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={mileage}
-                                    onChange={(e) => setMileage(e.target.value)}
-                                    placeholder="e.g., 50000"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                />
-                            </div>
+                                {/* Mileage */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Mileage (km)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={mileage}
+                                        onChange={(e) => setMileage(e.target.value)}
+                                        placeholder="e.g., 50000"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                    />
+                                </div>
 
-                            {/* Vehicle Type */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Vehicle Type *
-                                </label>
-                                <select
-                                    value={vehicleType}
-                                    onChange={(e) => setVehicleType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    required
-                                >
-                                    <option value="">Select Vehicle Type</option>
-                                    {vehicleTypes.map((type) => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
+                                {/* Vehicle Type */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Vehicle Type *
+                                    </label>
+                                    <select
+                                        value={vehicleType}
+                                        onChange={(e) => setVehicleType(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        required
+                                    >
+                                        <option value="">Select Vehicle Type</option>
+                                        {vehicleTypes.map((type) => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Items Used */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -673,18 +689,20 @@ const Garage = () => {
                             </div>
 
                             {/* Labour Charges */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Labour Charges
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={labourCharges}
-                                    onChange={(e) => setLabourCharges(parseFloat(e.target.value) || 0)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                />
-                            </div>
+                            {!isNevilWindscreen && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Labour Charges
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={labourCharges}
+                                        onChange={(e) => setLabourCharges(parseFloat(e.target.value) || 0)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                    />
+                                </div>
+                            )}
 
                             <div className="border-t border-gray-200 pt-3">
                                 <div className="flex justify-between text-sm mb-2">
