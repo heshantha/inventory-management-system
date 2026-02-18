@@ -109,3 +109,8 @@ textarea {
 .animate-slide-in {
   animation: slideIn 0.3s ease-out forwards;
 }
+
+/* Nevil Windscreen Center invoice - blue header/footer */
+.nevil-blue-bg {
+  background-color: #1e3a8a;
+}
