@@ -63,7 +63,9 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                         <div className="w-full sm:w-auto">
                             <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">{shopData.name}</h1>
                             <p className="text-xs md:text-sm text-gray-600 mt-1">{shopData.address}</p>
-                            <p className="text-xs md:text-sm text-gray-600">Phone: {shopData.phone}</p>
+                            <p className="text-xs md:text-sm text-gray-600">
+                                Phone: {[shopData.phone, shopData.phone2, shopData.phone3].filter(Boolean).join(' / ')}
+                            </p>
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
                             <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-primary-600">SERVICE INVOICE</h2>
@@ -220,7 +222,9 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                     <div className="mt-4 md:mt-8 pt-4 border-t-2 border-gray-200 text-center">
                         <p className="font-bold text-gray-800 text-sm md:text-base">{shopData.name}</p>
                         <p className="text-gray-600 text-xs md:text-sm">{shopData.address}</p>
-                        <p className="text-gray-600 text-xs md:text-sm">Tel: {shopData.phone}</p>
+                        <p className="text-gray-600 text-xs md:text-sm">
+                            Tel: {[shopData.phone, shopData.phone2, shopData.phone3].filter(Boolean).join(' / ')}
+                        </p>
                         <p className="text-gray-500 text-[10px] md:text-xs mt-2">Thank you for your business!</p>
                     </div>
 
@@ -238,7 +242,7 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
 
                         /* Page setup */
                         @page {
-                            size: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '210mm 148mm' : 'A4 landscape'};
+                            size: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '210mm 148mm' : 'A4 landscape'};
                             margin: 0;
                         }
 
@@ -258,18 +262,18 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                             position: fixed;
                             left: 0;
                             top: 0;
-                            width: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '210mm' : '100%'};
-                            height: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '148mm' : '100%'};
-                            max-height: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '148mm' : 'none'};
+                            width: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '210mm' : '100%'};
+                            height: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '148mm' : '100%'};
+                            max-height: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '148mm' : 'none'};
                             margin: 0;
-                            padding: ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? '5mm' : '10mm'} !important;
+                            padding: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '5mm' : '10mm'} !important;
                             z-index: 9999;
                             background: white;
                             overflow: hidden;
                         }
 
                         /* Compact Typography & Layout - Only for target shop types */
-                        ${['Service Center', 'Garage', 'Computer Shop'].includes(shopData?.business_type) ? `
+                        ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? `
                             .service-invoice * {
                                 font-size: 8px !important;
                                 line-height: 1.2 !important;

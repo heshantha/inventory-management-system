@@ -9,7 +9,7 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
 
     // Debug logging
     console.log('Invoice - Shop Type:', currentShop?.business_type);
-    console.log('Invoice - Will use page size:', currentShop?.business_type === 'Service Center' ? '210mm x 148mm (Portrait)' : 'A4 Landscape');
+    console.log('Invoice - Will use page size:', ['Service Center', 'Nevil Windscreen Center'].includes(currentShop?.business_type) ? '210mm x 148mm (Portrait)' : 'A4 Landscape');
 
     const handlePrint = () => {
         window.print();
@@ -58,7 +58,9 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                             <div className="w-full sm:w-auto">
                                 <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">{currentShop?.name || 'Store Name'}</h1>
                                 <p className="text-xs md:text-sm text-gray-600 mt-1">{currentShop?.address || 'Store Address'}</p>
-                                <p className="text-xs md:text-sm text-gray-600">Phone: {currentShop?.phone || 'Phone Number'}</p>
+                                <p className="text-xs md:text-sm text-gray-600">
+                                    Phone: {[currentShop?.phone, currentShop?.phone2, currentShop?.phone3].filter(Boolean).join(' / ') || 'Phone Number'}
+                                </p>
                             </div>
                             <div className="text-left sm:text-right w-full sm:w-auto">
                                 <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-primary-600">INVOICE</h2>
@@ -180,7 +182,9 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                         <div className="mt-4 md:mt-8 pt-4 border-t-2 border-gray-200 text-center">
                             <p className="font-bold text-gray-800 text-sm md:text-base">{currentShop?.name}</p>
                             <p className="text-gray-600 text-xs md:text-sm">{currentShop?.address}</p>
-                            <p className="text-gray-600 text-xs md:text-sm">Tel: {currentShop?.phone}</p>
+                            <p className="text-gray-600 text-xs md:text-sm">
+                                Tel: {[currentShop?.phone, currentShop?.phone2, currentShop?.phone3].filter(Boolean).join(' / ')}
+                            </p>
                             <p className="text-gray-500 text-[10px] md:text-xs mt-2">Thank you for your business!</p>
                         </div>
                     </div>
@@ -199,7 +203,7 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
 
                         /* Page setup */
                         @page {
-                            size: ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? '210mm 148mm' : 'A4 landscape'};
+                            size: ${['Service Center', 'Computer Shop', 'Nevil Windscreen Center'].includes(currentShop?.business_type) ? '210mm 148mm' : 'A4 landscape'};
                             margin: 0; /* Minimal margin at page level */
                         }
 
@@ -223,11 +227,11 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                             margin: 0;
                             z-index: 9999; /* Ensure it's on top */
                             background: white;
-                            padding: ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
+                            padding: ${['Service Center', 'Computer Shop', 'Nevil Windscreen Center'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
                         }
                         
                         /* Service Center & Computer Shop specific adjustments */
-                        ${['Service Center', 'Computer Shop'].includes(currentShop?.business_type) ? `
+                        ${['Service Center', 'Computer Shop', 'Nevil Windscreen Center'].includes(currentShop?.business_type) ? `
                             .service-invoice {
                                 width: 210mm;
                                 height: 148mm;

@@ -248,7 +248,7 @@ const Reports = () => {
 
         const dateRangeLabel = getDateRangeLabel();
         const reportTitle = activeTab === 'repairs'
-            ? (currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' ? 'Garage Report' : 'Repair Report')
+            ? (currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' || currentShop?.business_type === 'Nevil Windscreen Center' ? 'Garage Report' : 'Repair Report')
             : 'Sales Report';
 
         console.log(`Generating ${reportTitle} for ${dateRangeLabel}`, {
@@ -287,7 +287,7 @@ const Reports = () => {
                         : 'text-gray-600 hover:text-gray-900'
                         }`}
                 >
-                    {currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage'
+                    {currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' || currentShop?.business_type === 'Nevil Windscreen Center'
                         ? 'Garage Reports'
                         : 'Repair Reports'}
                 </button>

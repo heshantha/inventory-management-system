@@ -52,6 +52,7 @@ const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
                 <option value="Hardware Shop">Hardware Shop</option>
                 <option value="Pharmacy Shop">Pharmacy Shop</option>
                 <option value="Service Center">Service Center</option>
+                <option value="Nevil Windscreen Center">Nevil Windscreen Center</option>
             </select>
         </div>
 
@@ -85,12 +86,34 @@ const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
         </div>
 
         <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number 1 *</label>
             <input
                 type="tel"
                 required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                placeholder="+94 XX XXX XXXX"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number 2</label>
+            <input
+                type="tel"
+                value={formData.phone2 || ''}
+                onChange={(e) => setFormData({ ...formData, phone2: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                placeholder="+94 XX XXX XXXX"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number 3</label>
+            <input
+                type="tel"
+                value={formData.phone3 || ''}
+                onChange={(e) => setFormData({ ...formData, phone3: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 placeholder="+94 XX XXX XXXX"
             />
@@ -205,6 +228,8 @@ const SuperAdminDashboard = () => {
         location: '',
         address: '',
         phone: '',
+        phone2: '',
+        phone3: '',
         email: '',
         username: '',
         password: '',
@@ -243,6 +268,8 @@ const SuperAdminDashboard = () => {
                 location: formData.location,
                 address: formData.address,
                 phone: formData.phone,
+                phone2: formData.phone2,
+                phone3: formData.phone3,
                 email: formData.email,
                 subscription_start_date: formData.subscriptionStartDate || null,
                 subscription_end_date: formData.subscriptionEndDate || null
@@ -292,6 +319,8 @@ const SuperAdminDashboard = () => {
             location: '',
             address: '',
             phone: '',
+            phone2: '',
+            phone3: '',
             email: '',
             username: '',
             password: '',
@@ -310,6 +339,8 @@ const SuperAdminDashboard = () => {
             location: shop.location,
             address: shop.address || '',
             phone: shop.phone,
+            phone2: shop.phone2 || '',
+            phone3: shop.phone3 || '',
             email: shop.email,
             username: '',
             password: '',
@@ -330,6 +361,8 @@ const SuperAdminDashboard = () => {
             location: formData.location,
             address: formData.address,
             phone: formData.phone,
+            phone2: formData.phone2,
+            phone3: formData.phone3,
             email: formData.email,
             subscription_start_date: formData.subscriptionStartDate || null,
             subscription_end_date: formData.subscriptionEndDate || null
