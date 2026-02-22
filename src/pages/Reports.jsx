@@ -180,16 +180,19 @@ const Reports = () => {
         }
     };
 
-    const handleDownloadPDF = () => {
-        // Recalculate stats with current filters to ensure PDF has latest data
+    const getFilteredSalesForActiveTab = () => {
         let filteredSales = filterSalesByDateRange();
-
-        // Filter by active tab (POS or Repairs)
         if (activeTab === 'pos') {
             filteredSales = filteredSales.filter(sale => !isRepairSale(sale));
         } else {
             filteredSales = filteredSales.filter(sale => isRepairSale(sale));
         }
+        return filteredSales;
+    };
+
+    const handleDownloadPDF = () => {
+        // Recalculate stats with current filters to ensure PDF has latest data
+        const filteredSales = getFilteredSalesForActiveTab();
 
         // Calculate fresh stats for PDF
         const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total_amount, 0);
@@ -261,6 +264,8 @@ const Reports = () => {
         downloadSalesReportPDF(reportData, dateRangeLabel, currentShop, reportTitle);
     };
 
+    const hasDataForDownload = getFilteredSalesForActiveTab().length > 0;
+
     return (
         <div className="p-3 md:p-6">
             {/* Header */}
@@ -321,7 +326,11 @@ const Reports = () => {
                     </div>
                     <button
                         onClick={handleDownloadPDF}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm w-full md:w-auto"
+                        disabled={!hasDataForDownload}
+                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium text-sm w-full md:w-auto ${hasDataForDownload
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
                     >
                         <Download size={18} />
                         <span>Download PDF</span>
