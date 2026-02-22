@@ -6,6 +6,17 @@ class SupabaseService {
         this.supabase = supabase;
     }
 
+    removeInvoiceBrandingFields(shopData = {}) {
+        const {
+            invoice_logo_url,
+            invoice_header_color,
+            invoice_title_color,
+            invoice_paragraph_color,
+            ...rest
+        } = shopData;
+        return rest;
+    }
+
     // ==================== SHOPS ====================
 
     async getAllShops() {
@@ -55,6 +66,42 @@ class SupabaseService {
             if (error) throw error;
             return { success: true, id: data.id };
         } catch (error) {
+            const missingBrandingColumn =
+                error?.code === 'PGRST204' &&
+                typeof error?.message === 'string' &&
+                (
+                    error.message.includes('invoice_logo_url') ||
+                    error.message.includes('invoice_header_color') ||
+                    error.message.includes('invoice_title_color') ||
+                    error.message.includes('invoice_paragraph_color')
+                );
+
+            if (missingBrandingColumn) {
+                try {
+                    const fallbackShopData = this.removeInvoiceBrandingFields(shopData);
+                    const { data: fallbackData, error: fallbackError } = await this.supabase
+                        .from('shops')
+                        .insert({
+                            ...fallbackShopData,
+                            is_active: true,
+                            subscription_start_date: fallbackShopData.subscription_start_date || null,
+                            subscription_end_date: fallbackShopData.subscription_end_date || null
+                        })
+                        .select()
+                        .single();
+
+                    if (fallbackError) throw fallbackError;
+                    return {
+                        success: true,
+                        id: fallbackData.id,
+                        warning: 'Invoice branding columns are not in database yet. Run add-invoice-branding-columns.sql to enable logo/colors.'
+                    };
+                } catch (fallbackErr) {
+                    console.error('Error creating shop (fallback):', fallbackErr);
+                    return { success: false, message: fallbackErr.message };
+                }
+            }
+
             console.error('Error creating shop:', error);
             return { success: false, message: error.message };
         }
@@ -75,6 +122,40 @@ class SupabaseService {
             if (error) throw error;
             return { success: true };
         } catch (error) {
+            const missingBrandingColumn =
+                error?.code === 'PGRST204' &&
+                typeof error?.message === 'string' &&
+                (
+                    error.message.includes('invoice_logo_url') ||
+                    error.message.includes('invoice_header_color') ||
+                    error.message.includes('invoice_title_color') ||
+                    error.message.includes('invoice_paragraph_color')
+                );
+
+            if (missingBrandingColumn) {
+                try {
+                    const fallbackShopData = this.removeInvoiceBrandingFields(shopData);
+                    const { error: fallbackError } = await this.supabase
+                        .from('shops')
+                        .update({
+                            ...fallbackShopData,
+                            subscription_start_date: fallbackShopData.subscription_start_date || null,
+                            subscription_end_date: fallbackShopData.subscription_end_date || null,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', shopId);
+
+                    if (fallbackError) throw fallbackError;
+                    return {
+                        success: true,
+                        warning: 'Invoice branding columns are not in database yet. Run add-invoice-branding-columns.sql to enable logo/colors.'
+                    };
+                } catch (fallbackErr) {
+                    console.error('Error updating shop (fallback):', fallbackErr);
+                    return { success: false, message: fallbackErr.message };
+                }
+            }
+
             console.error('Error updating shop:', error);
             return { success: false, message: error.message };
         }
@@ -902,6 +983,30 @@ class SupabaseService {
         } catch (error) {
             console.error('Error getting sales:', error);
             return [];
+        }
+    }
+
+    async clearSalesHistoryByShop(shopId) {
+        try {
+            // Get count before delete so UI can show what was removed
+            const { count, error: countError } = await this.supabase
+                .from('sales')
+                .select('id', { count: 'exact', head: true })
+                .eq('shop_id', shopId);
+
+            if (countError) throw countError;
+
+            const { error } = await this.supabase
+                .from('sales')
+                .delete()
+                .eq('shop_id', shopId);
+
+            if (error) throw error;
+
+            return { success: true, deletedCount: count || 0 };
+        } catch (error) {
+            console.error('Error clearing sales history:', error);
+            return { success: false, message: error.message };
         }
     }
 

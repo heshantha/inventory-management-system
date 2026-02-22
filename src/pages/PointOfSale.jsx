@@ -736,27 +736,13 @@ const PointOfSale = () => {
                 </div>
             </div>
 
-            {/* Receipt Modal - Conditional based on shop type */}
+            {/* Receipt Modal */}
             {showReceipt && currentInvoice && (
-                (currentShop?.business_type === 'Computer Shop' || currentShop?.business_type === 'Service Center' || currentShop?.business_type === 'garage' || currentShop?.business_type === 'Nevil Windscreen Center') ? (
-                    <Invoice
-                        invoice={currentInvoice}
-                        onClose={() => setShowReceipt(false)}
-                        currentShop={currentShop}
-                    />
-                ) : (
-                    <Modal
-                        isOpen={showReceipt}
-                        onClose={() => setShowReceipt(false)}
-                        title="Thermal Receipt"
-                        size="lg"
-                    >
-                        <ThermalReceipt
-                            invoice={currentInvoice}
-                            onClose={() => setShowReceipt(false)}
-                        />
-                    </Modal>
-                )
+                <Invoice
+                    invoice={currentInvoice}
+                    onClose={() => setShowReceipt(false)}
+                    currentShop={currentShop}
+                />
             )}
         </div>
     );

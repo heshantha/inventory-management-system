@@ -767,6 +767,7 @@ const Garage = () => {
                     serviceData={invoiceData}
                     shopData={currentShop}
                     customerData={invoiceCustomerData}
+                    usePosLayout={true}
                     onClose={() => setShowInvoice(false)}
                 />
             )}

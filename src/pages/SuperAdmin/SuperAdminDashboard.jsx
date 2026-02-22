@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 // Move form fields component outside to prevent re-renders
-const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
+const ShopFormFields = ({ formData, setFormData, handleLogoFileUpload, isEdit = false }) => (
     <>
         <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Shop Information</h3>
@@ -154,6 +154,62 @@ const ShopFormFields = ({ formData, setFormData, isEdit = false }) => (
         </div>
 
         <div className="col-span-2 pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Invoice Branding</h3>
+        </div>
+
+        <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Logo</label>
+            <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoFileUpload}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+                Optional. Browse and upload an image to use as invoice logo.
+            </p>
+            {formData.invoiceLogoUrl && (
+                <div className="mt-2">
+                    <img
+                        src={formData.invoiceLogoUrl}
+                        alt="Invoice logo preview"
+                        className="h-14 w-14 object-contain border border-gray-200 rounded bg-white p-1"
+                    />
+                </div>
+            )}
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Header Color</label>
+            <input
+                type="color"
+                value={formData.invoiceHeaderColor || '#1e3a8a'}
+                onChange={(e) => setFormData({ ...formData, invoiceHeaderColor: e.target.value })}
+                className="w-full h-10 px-1 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Title Color</label>
+            <input
+                type="color"
+                value={formData.invoiceTitleColor || '#1e3a8a'}
+                onChange={(e) => setFormData({ ...formData, invoiceTitleColor: e.target.value })}
+                className="w-full h-10 px-1 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+        </div>
+
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Paragraph Color</label>
+            <input
+                type="color"
+                value={formData.invoiceParagraphColor || '#1f2937'}
+                onChange={(e) => setFormData({ ...formData, invoiceParagraphColor: e.target.value })}
+                className="w-full h-10 px-1 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            />
+        </div>
+
+        <div className="col-span-2 pt-4 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Owner Information</h3>
         </div>
 
@@ -231,6 +287,10 @@ const SuperAdminDashboard = () => {
         phone2: '',
         phone3: '',
         email: '',
+        invoiceLogoUrl: '',
+        invoiceHeaderColor: '#1e3a8a',
+        invoiceTitleColor: '#1e3a8a',
+        invoiceParagraphColor: '#1f2937',
         username: '',
         password: '',
         subscriptionStartDate: '',
@@ -238,6 +298,32 @@ const SuperAdminDashboard = () => {
     });
 
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive', 'expiring'
+    const [clearingSalesHistory, setClearingSalesHistory] = useState(false);
+
+    const handleLogoFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        // Keep logo small enough for DB text field storage.
+        if (file.size > 2 * 1024 * 1024) {
+            alert('Logo image is too large. Please select an image under 2MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setFormData((prev) => ({
+                ...prev,
+                invoiceLogoUrl: reader.result
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
 
     useEffect(() => {
         // Redirect if not super admin
@@ -271,6 +357,10 @@ const SuperAdminDashboard = () => {
                 phone2: formData.phone2,
                 phone3: formData.phone3,
                 email: formData.email,
+                invoice_logo_url: formData.invoiceLogoUrl || null,
+                invoice_header_color: formData.invoiceHeaderColor || '#1e3a8a',
+                invoice_title_color: formData.invoiceTitleColor || '#1e3a8a',
+                invoice_paragraph_color: formData.invoiceParagraphColor || '#1f2937',
                 subscription_start_date: formData.subscriptionStartDate || null,
                 subscription_end_date: formData.subscriptionEndDate || null
             });
@@ -291,7 +381,8 @@ const SuperAdminDashboard = () => {
             });
 
             if (userResult.success) {
-                alert(`Shop created successfully!\n\nCredentials:\nUsername: ${formData.username}\nPassword: ${formData.password}\n\nPlease save these credentials and share with the shop owner.`);
+                const warningText = shopResult.warning ? `\n\nNote: ${shopResult.warning}` : '';
+                alert(`Shop created successfully!\n\nCredentials:\nUsername: ${formData.username}\nPassword: ${formData.password}\n\nPlease save these credentials and share with the shop owner.${warningText}`);
                 setShowCreateModal(false);
                 resetForm();
                 loadShops();
@@ -322,6 +413,10 @@ const SuperAdminDashboard = () => {
             phone2: '',
             phone3: '',
             email: '',
+            invoiceLogoUrl: '',
+            invoiceHeaderColor: '#1e3a8a',
+            invoiceTitleColor: '#1e3a8a',
+            invoiceParagraphColor: '#1f2937',
             username: '',
             password: '',
             subscriptionStartDate: '',
@@ -342,6 +437,10 @@ const SuperAdminDashboard = () => {
             phone2: shop.phone2 || '',
             phone3: shop.phone3 || '',
             email: shop.email,
+            invoiceLogoUrl: shop.invoice_logo_url || '',
+            invoiceHeaderColor: shop.invoice_header_color || '#1e3a8a',
+            invoiceTitleColor: shop.invoice_title_color || '#1e3a8a',
+            invoiceParagraphColor: shop.invoice_paragraph_color || '#1f2937',
             username: '',
             password: '',
             subscriptionStartDate: shop.subscription_start_date || '',
@@ -364,12 +463,17 @@ const SuperAdminDashboard = () => {
             phone2: formData.phone2,
             phone3: formData.phone3,
             email: formData.email,
+            invoice_logo_url: formData.invoiceLogoUrl || null,
+            invoice_header_color: formData.invoiceHeaderColor || '#1e3a8a',
+            invoice_title_color: formData.invoiceTitleColor || '#1e3a8a',
+            invoice_paragraph_color: formData.invoiceParagraphColor || '#1f2937',
             subscription_start_date: formData.subscriptionStartDate || null,
             subscription_end_date: formData.subscriptionEndDate || null
         });
 
         if (result.success) {
-            alert('Shop updated successfully!');
+            const warningText = result.warning ? `\n\nNote: ${result.warning}` : '';
+            alert(`Shop updated successfully!${warningText}`);
             setShowEditModal(false);
             setEditingShop(null);
             resetForm();
@@ -384,6 +488,33 @@ const SuperAdminDashboard = () => {
                 alert('Shop deleted successfully');
                 loadShops();
             }
+        }
+    };
+
+    const handleClearSalesHistory = async () => {
+        if (!editingShop?.id) return;
+
+        const confirmMessage = `⚠️ CLEAR SALES HISTORY?\n\nThis will permanently delete ALL sales/invoices for "${editingShop.name}".\n\nThis action cannot be undone.\n\nType "${editingShop.name}" to confirm:`;
+        const userInput = prompt(confirmMessage);
+
+        if (userInput === null) return;
+        if (userInput !== editingShop.name) {
+            alert('Shop name did not match. Operation cancelled.');
+            return;
+        }
+
+        setClearingSalesHistory(true);
+        try {
+            const result = await supabaseService.clearSalesHistoryByShop(editingShop.id);
+            if (result.success) {
+                alert(`Sales history cleared successfully.\n\nDeleted records: ${result.deletedCount}`);
+            } else {
+                alert('Error clearing sales history: ' + result.message);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            setClearingSalesHistory(false);
         }
     };
 
@@ -645,7 +776,12 @@ const SuperAdminDashboard = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <ShopFormFields formData={formData} setFormData={setFormData} isEdit={false} />
+                        <ShopFormFields
+                            formData={formData}
+                            setFormData={setFormData}
+                            handleLogoFileUpload={handleLogoFileUpload}
+                            isEdit={false}
+                        />
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -679,10 +815,23 @@ const SuperAdminDashboard = () => {
             >
                 <form onSubmit={handleUpdateShop} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <ShopFormFields formData={formData} setFormData={setFormData} isEdit={true} />
+                        <ShopFormFields
+                            formData={formData}
+                            setFormData={setFormData}
+                            handleLogoFileUpload={handleLogoFileUpload}
+                            isEdit={true}
+                        />
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button
+                            type="button"
+                            variant="danger"
+                            onClick={handleClearSalesHistory}
+                            disabled={clearingSalesHistory}
+                        >
+                            {clearingSalesHistory ? 'Clearing Sales...' : 'Clear Sales History'}
+                        </Button>
                         <Button
                             type="button"
                             variant="secondary"

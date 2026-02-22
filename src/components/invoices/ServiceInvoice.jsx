@@ -4,7 +4,7 @@ import { downloadInvoicePDF } from '../../utils/pdfGenerator';
 import { Download, Printer } from 'lucide-react';
 import Invoice from '../Invoice/Invoice';
 
-const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = 'garage' }) => {
+const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = 'garage', usePosLayout = false }) => {
     console.log('DEBUG ServiceInvoice serviceData:', serviceData);
     const isNevilWindscreen = shopData?.business_type === 'Nevil Windscreen Center';
     const serviceCreatedAt = serviceData?.created_at || null;
@@ -35,6 +35,9 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
         invoice_number: serviceData?.invoice_number || 'INV-0000',
         created_at: serviceData?.created_at,
         vehicle_number: serviceData?.vehicle_number || null,
+        mileage: serviceData?.mileage || null,
+        make_model: serviceData?.make_model || serviceData?.vehicle_type || null,
+        service_type: serviceData?.service_type || null,
         customer_name: serviceData?.customer_name || customerData?.name || 'Walk-in Customer',
         customer_phone: serviceData?.customer_phone || customerData?.phone || null,
         customer_address: serviceData?.customer_address || customerData?.address || null,
@@ -66,8 +69,8 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
         warranty: serviceData?.service_warranty || null,
     };
 
-    // Nevil garage/service invoices should use the same layout as POS invoice.
-    if (isNevilWindscreen) {
+    // Garage page can force the same invoice component/layout used by POS.
+    if (usePosLayout || isNevilWindscreen) {
         return (
             <Invoice
                 invoice={mappedInvoiceForNevil}
