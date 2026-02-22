@@ -378,6 +378,20 @@ class SupabaseService {
         }
     }
 
+    async updateUserPasswordByAuthId(authId, newPassword) {
+        try {
+            const { error } = await supabaseAdmin.auth.admin.updateUserById(authId, {
+                password: newPassword
+            });
+
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Error updating user password:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
     async deleteUser(id) {
         try {
             const { error } = await this.supabase

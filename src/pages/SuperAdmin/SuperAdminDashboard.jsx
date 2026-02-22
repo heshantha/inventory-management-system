@@ -237,7 +237,7 @@ const ShopFormFields = ({ formData, setFormData, handleLogoFileUpload, isEdit = 
             />
         </div>
 
-        {!isEdit && (
+        {!isEdit ? (
             <>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
@@ -264,6 +264,31 @@ const ShopFormFields = ({ formData, setFormData, handleLogoFileUpload, isEdit = 
                     />
                 </div>
             </>
+        ) : (
+            <>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input
+                        type="text"
+                        value={formData.username}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <input
+                        type="password"
+                        value={formData.newPassword || ''}
+                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        placeholder="Leave empty to keep current password"
+                        minLength={6}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Minimum 6 characters. Only change if needed.</p>
+                </div>
+            </>
         )}
     </>
 );
@@ -276,6 +301,7 @@ const SuperAdminDashboard = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingShop, setEditingShop] = useState(null);
+    const [editingShopOwnerUser, setEditingShopOwnerUser] = useState(null);
     const [formData, setFormData] = useState({
         shopName: '',
         ownerName: '',
@@ -293,6 +319,7 @@ const SuperAdminDashboard = () => {
         invoiceParagraphColor: '#1f2937',
         username: '',
         password: '',
+        newPassword: '',
         subscriptionStartDate: '',
         subscriptionEndDate: ''
     });
@@ -419,13 +446,17 @@ const SuperAdminDashboard = () => {
             invoiceParagraphColor: '#1f2937',
             username: '',
             password: '',
+            newPassword: '',
             subscriptionStartDate: '',
             subscriptionEndDate: ''
         });
     };
 
-    const handleEditShop = (shop) => {
+    const handleEditShop = async (shop) => {
         setEditingShop(shop);
+        const shopUsers = await supabaseService.getAllUsers(shop.id);
+        const ownerUser = shopUsers.find(u => u.role === 'shop_owner') || shopUsers[0] || null;
+        setEditingShopOwnerUser(ownerUser);
         setFormData({
             shopName: shop.name,
             ownerName: shop.owner_name,
@@ -441,8 +472,9 @@ const SuperAdminDashboard = () => {
             invoiceHeaderColor: shop.invoice_header_color || '#1e3a8a',
             invoiceTitleColor: shop.invoice_title_color || '#1e3a8a',
             invoiceParagraphColor: shop.invoice_paragraph_color || '#1f2937',
-            username: '',
+            username: ownerUser?.username || '',
             password: '',
+            newPassword: '',
             subscriptionStartDate: shop.subscription_start_date || '',
             subscriptionEndDate: shop.subscription_end_date || ''
         });
@@ -472,10 +504,28 @@ const SuperAdminDashboard = () => {
         });
 
         if (result.success) {
+            let passwordWarning = '';
+            if (formData.newPassword && formData.newPassword.trim().length > 0) {
+                if (!editingShopOwnerUser?.auth_id) {
+                    passwordWarning = '\n\nNote: Owner login not found, so password was not changed.';
+                } else if (formData.newPassword.trim().length < 6) {
+                    passwordWarning = '\n\nNote: Password not changed. It must be at least 6 characters.';
+                } else {
+                    const pwResult = await supabaseService.updateUserPasswordByAuthId(
+                        editingShopOwnerUser.auth_id,
+                        formData.newPassword.trim()
+                    );
+                    if (!pwResult.success) {
+                        passwordWarning = `\n\nNote: Shop details updated, but password change failed: ${pwResult.message}`;
+                    }
+                }
+            }
+
             const warningText = result.warning ? `\n\nNote: ${result.warning}` : '';
-            alert(`Shop updated successfully!${warningText}`);
+            alert(`Shop updated successfully!${warningText}${passwordWarning}`);
             setShowEditModal(false);
             setEditingShop(null);
+            setEditingShopOwnerUser(null);
             resetForm();
             loadShops();
         }
@@ -808,6 +858,7 @@ const SuperAdminDashboard = () => {
                 onClose={() => {
                     setShowEditModal(false);
                     setEditingShop(null);
+                    setEditingShopOwnerUser(null);
                     resetForm();
                 }}
                 title={`Edit Shop: ${editingShop?.name}`}
