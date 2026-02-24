@@ -5,7 +5,7 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle, Search } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
@@ -36,6 +36,7 @@ const Products = () => {
         notes: ''
     });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         if (shopId) {
@@ -181,6 +182,15 @@ const Products = () => {
         }
     };
 
+    const filteredProducts = products.filter((p) => {
+        const q = searchQuery.toLowerCase().trim();
+        if (!q) return true;
+        return (
+            p.name.toLowerCase().includes(q) ||
+            (p.sku && p.sku.toLowerCase().includes(q))
+        );
+    });
+
     return (
         <div className="p-3 md:p-6">
             {/* Header */}
@@ -224,6 +234,29 @@ const Products = () => {
                 </Button>
             </div>
 
+            {/* Search Bar */}
+            <div className="mb-4">
+                <div className="relative max-w-sm">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Search by name or SKU..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            title="Clear search"
+                        >
+                            <XCircle size={16} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
             {/* Products Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -251,14 +284,16 @@ const Products = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {products.length === 0 ? (
+                            {filteredProducts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                                        No products found. Click "Add Product" to create one.
+                                        {searchQuery
+                                            ? `No products found matching "${searchQuery}".`
+                                            : 'No products found. Click "Add Product" to create one.'}
                                     </td>
                                 </tr>
                             ) : (
-                                products.map((product) => (
+                                filteredProducts.map((product) => (
                                     <tr key={product.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
