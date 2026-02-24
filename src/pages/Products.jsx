@@ -37,6 +37,8 @@ const Products = () => {
     });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     useEffect(() => {
         if (shopId) {
@@ -191,6 +193,13 @@ const Products = () => {
         );
     });
 
+    const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedProducts = filteredProducts.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE
+    );
+
     return (
         <div className="p-3 md:p-6">
             {/* Header */}
@@ -242,12 +251,12 @@ const Products = () => {
                         type="text"
                         placeholder="Search by name or SKU..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                         className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                     />
                     {searchQuery && (
                         <button
-                            onClick={() => setSearchQuery('')}
+                            onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             title="Clear search"
                         >
@@ -284,7 +293,7 @@ const Products = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredProducts.length === 0 ? (
+                            {paginatedProducts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                                         {searchQuery
@@ -293,7 +302,7 @@ const Products = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredProducts.map((product) => (
+                                paginatedProducts.map((product) => (
                                     <tr key={product.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -363,6 +372,54 @@ const Products = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Pagination */}
+            {filteredProducts.length > ITEMS_PER_PAGE && (
+                <div className="flex items-center justify-between mt-4 px-1">
+                    <p className="text-sm text-gray-600">
+                        Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} products
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage === 1}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                        >
+                            ← Prev
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((page) => page === 1 || page === totalPages || Math.abs(page - safePage) <= 1)
+                            .reduce((acc, page, idx, arr) => {
+                                if (idx > 0 && page - arr[idx - 1] > 1) acc.push('...');
+                                acc.push(page);
+                                return acc;
+                            }, [])
+                            .map((item, idx) =>
+                                item === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
+                                ) : (
+                                    <button
+                                        key={item}
+                                        onClick={() => setCurrentPage(item)}
+                                        className={`px-3 py-1.5 text-sm border rounded-lg transition-colors ${safePage === item
+                                                ? 'bg-primary-600 text-white border-primary-600'
+                                                : 'border-gray-300 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {item}
+                                    </button>
+                                )
+                            )}
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage === totalPages}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                        >
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Add/Edit Modal */}
             <Modal
