@@ -4,7 +4,7 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, User, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, Search } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
 const Customers = () => {
@@ -19,18 +19,21 @@ const Customers = () => {
         address: '',
         notes: '',
     });
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-
-    useEffect(() => {
-        if (shopId) {
-            loadCustomers();
-        }
-    }, [shopId]);
 
     const loadCustomers = async () => {
         const data = await api.customers.getAll(shopId);
         setCustomers(data);
     };
+
+    useEffect(() => {
+        if (!shopId) return;
+        api.customers.getAll(shopId).then((data) => {
+            setCustomers(data);
+        });
+    }, [shopId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -92,6 +95,38 @@ const Customers = () => {
         setEditingCustomer(null);
     };
 
+    const filteredCustomers = customers.filter((customer) =>
+        customer.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
+    );
+    const itemsPerPage = 10;
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / itemsPerPage));
+    const effectiveCurrentPage = Math.min(currentPage, totalPages);
+    const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
+    const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
+    const getVisiblePages = () => {
+        if (totalPages <= 7) {
+            return Array.from({ length: totalPages }, (_, index) => index + 1);
+        }
+
+        const pages = [1];
+        if (effectiveCurrentPage > 4) {
+            pages.push('left-ellipsis');
+        }
+
+        const middleStart = Math.max(2, effectiveCurrentPage - 1);
+        const middleEnd = Math.min(totalPages - 1, effectiveCurrentPage + 1);
+        for (let page = middleStart; page <= middleEnd; page += 1) {
+            pages.push(page);
+        }
+
+        if (effectiveCurrentPage < totalPages - 3) {
+            pages.push('right-ellipsis');
+        }
+        pages.push(totalPages);
+
+        return pages;
+    };
+
     return (
         <div className="p-3 md:p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 mb-6">
@@ -134,6 +169,23 @@ const Customers = () => {
                 </Button>
             </div>
 
+            {/* Search */}
+            <div className="mb-4">
+                <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        placeholder="Search customers by name..."
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                </div>
+            </div>
+
             {/* Customers Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -155,14 +207,16 @@ const Customers = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {customers.length === 0 ? (
+                            {filteredCustomers.length === 0 ? (
                                 <tr>
                                     <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                                        No customers found. Click "Add Customer" to create one.
+                                        {customers.length === 0
+                                            ? 'No customers found. Click "Add Customer" to create one.'
+                                            : 'No customers match your search.'}
                                     </td>
                                 </tr>
                             ) : (
-                                customers.map((customer) => (
+                                paginatedCustomers.map((customer) => (
                                     <tr key={customer.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -227,6 +281,50 @@ const Customers = () => {
                     </table>
                 </div>
             </div>
+            {filteredCustomers.length > 0 && (
+                <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <p className="text-sm text-gray-600">
+                        Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length}
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.max(Math.min(prev, totalPages) - 1, 1))}
+                            disabled={effectiveCurrentPage === 1}
+                            className="h-8 px-3 rounded-md border border-gray-300 text-sm text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                            ← Prev
+                        </button>
+                        {getVisiblePages().map((page, index) =>
+                            typeof page === 'number' ? (
+                                <button
+                                    key={page}
+                                    type="button"
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`h-8 min-w-8 px-2 rounded-md border text-sm ${effectiveCurrentPage === page
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {page}
+                                </button>
+                            ) : (
+                                <span key={`${page}-${index}`} className="h-8 min-w-8 inline-flex items-center justify-center text-gray-500">
+                                    ...
+                                </span>
+                            )
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage((prev) => Math.min(Math.min(prev, totalPages) + 1, totalPages))}
+                            disabled={effectiveCurrentPage === totalPages}
+                            className="h-8 px-3 rounded-md border border-gray-300 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Add/Edit Modal */}
             <Modal
