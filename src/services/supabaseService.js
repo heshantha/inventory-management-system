@@ -241,33 +241,102 @@ class SupabaseService {
         }
     }
 
-    async authenticateUser(username, password) {
+    async getUserByAuthId(authId) {
         try {
-            // Get user by username
-            const { data: users, error: userError } = await this.supabase
+            const { data, error } = await this.supabase
                 .from('users')
                 .select('*')
-                .eq('username', username)
-                .eq('is_active', true);
+                .eq('auth_id', authId)
+                .eq('is_active', true)
+                .single();
 
-            if (userError) throw userError;
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            // PGRST116 = no rows found with .single()
+            if (error?.code === 'PGRST116') {
+                return null;
+            }
+            console.error('Error getting user by auth id:', error);
+            return null;
+        }
+    }
 
-            if (!users || users.length === 0) {
+    async authenticateUser(usernameOrEmail, password) {
+        try {
+            const loginInput = (usernameOrEmail || '').trim();
+            if (!loginInput) {
                 return { success: false, message: 'Invalid credentials' };
             }
 
-            const userData = users[0];
+            // Sign in first, then read profile by auth_id.
+            // This avoids anonymous reads on public.users.
+            let loginEmails = [];
+            if (loginInput.includes('@')) {
+                loginEmails = [loginInput];
+            } else {
+                // Resolve the real email from users table for legacy accounts
+                // whose auth email is not username@inventory.com.
+                let resolvedEmail = null;
+                const { data: exactUser } = await supabaseAdmin
+                    .from('users')
+                    .select('email')
+                    .eq('username', loginInput)
+                    .eq('is_active', true)
+                    .maybeSingle();
 
-            // Sign in with Supabase Auth
-            const email = userData.email || `${username}@inventory.com`;
-            const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
+                if (exactUser?.email) {
+                    resolvedEmail = exactUser.email;
+                } else {
+                    const loweredInput = loginInput.toLowerCase();
+                    if (loweredInput !== loginInput) {
+                        const { data: loweredUser } = await supabaseAdmin
+                            .from('users')
+                            .select('email')
+                            .eq('username', loweredInput)
+                            .eq('is_active', true)
+                            .maybeSingle();
+                        resolvedEmail = loweredUser?.email || null;
+                    }
+                }
 
-            if (authError) {
-                console.error('Auth error:', authError);
+                loginEmails = [
+                    resolvedEmail,
+                    `${loginInput}@inventory.com`,
+                    ...(loginInput.toLowerCase() === 'admin'
+                        ? ['admin@smartstockpos.com', 'admin@inventory.com']
+                        : [])
+                ].filter(Boolean);
+            }
+            loginEmails = Array.from(new Set(loginEmails));
+
+            let authData = null;
+            let authError = null;
+            for (const email of loginEmails) {
+                const signInResult = await this.supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (!signInResult.error && signInResult.data?.user?.id) {
+                    authData = signInResult.data;
+                    authError = null;
+                    break;
+                }
+                authError = signInResult.error;
+            }
+
+            if (authError || !authData?.user?.id) {
+                if (authError) {
+                    console.error('Auth error:', authError);
+                }
                 return { success: false, message: 'Invalid credentials' };
+            }
+
+            const userData = await this.getUserByAuthId(authData.user.id);
+            if (!userData) {
+                await this.supabase.auth.signOut();
+                return { success: false, message: 'User profile not found or inactive' };
             }
 
             const { auth_id, ...userWithoutAuthId } = userData;
@@ -318,8 +387,9 @@ class SupabaseService {
 
     async createUser(userData) {
         try {
-            // Generate unique email if not provided (with timestamp to avoid duplicates)
-            const email = userData.email || `${userData.username}.${Date.now()}@inventory.com`;
+            // Keep username login predictable by using a deterministic fallback email.
+            // Username is UNIQUE, so username@inventory.com is also unique per user.
+            const email = userData.email || `${userData.username}@inventory.com`;
 
             // Create auth user with admin client (auto-confirmed)
             const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

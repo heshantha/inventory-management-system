@@ -20,12 +20,13 @@ export const AuthProvider = ({ children }) => {
         // Listen to Supabase Auth state changes
         const unsubscribe = supabaseService.onAuthStateChange(async (supabaseUser) => {
             if (supabaseUser) {
-                // User is signed in, fetch user data from database
+                // User is signed in, fetch only current user profile
                 try {
-                    const users = await supabaseService.getAllUsers();
-                    const userData = users.find(u => u.auth_id === supabaseUser.id);
+                    const userData = await supabaseService.getUserByAuthId(supabaseUser.id);
                     if (userData) {
                         setUser(userData);
+                    } else {
+                        setUser(null);
                     }
                 } catch (error) {
                     console.error('Error fetching user data:', error);
