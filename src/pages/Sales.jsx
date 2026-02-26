@@ -11,7 +11,7 @@ const Sales = () => {
     const [sales, setSales] = useState([]);
     const [filteredSales, setFilteredSales] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
+    const [dateFilter, setDateFilter] = useState('month'); // today, week, month
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showInvoice, setShowInvoice] = useState(false);
 
@@ -59,25 +59,23 @@ const Sales = () => {
         let filtered = [...sales];
 
         // Date filter
-        if (dateFilter !== 'all') {
-            const now = new Date();
-            filtered = filtered.filter(sale => {
-                const saleDate = new Date(sale.created_at);
+        const now = new Date();
+        filtered = filtered.filter(sale => {
+            const saleDate = new Date(sale.created_at);
 
-                switch (dateFilter) {
-                    case 'today':
-                        return saleDate.toDateString() === now.toDateString();
-                    case 'week':
-                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                        return saleDate >= weekAgo;
-                    case 'month':
-                        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                        return saleDate >= monthAgo;
-                    default:
-                        return true;
-                }
-            });
-        }
+            switch (dateFilter) {
+                case 'today':
+                    return saleDate.toDateString() === now.toDateString();
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    return saleDate >= weekAgo;
+                case 'month':
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    return saleDate >= monthAgo;
+                default:
+                    return false;
+            }
+        });
 
         // Search filter
         if (searchTerm) {
@@ -185,7 +183,6 @@ const Sales = () => {
                             onChange={(e) => setDateFilter(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                         >
-                            <option value="all">All Time</option>
                             <option value="today">Today</option>
                             <option value="week">Last 7 Days</option>
                             <option value="month">Last 30 Days</option>

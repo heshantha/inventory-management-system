@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -40,13 +40,7 @@ const Products = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
-    useEffect(() => {
-        if (shopId) {
-            loadData();
-        }
-    }, [shopId]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         const [productsData, categoriesData, suppliersData] = await Promise.all([
             api.products.getAll(shopId),
             api.categories.getAll(shopId),
@@ -55,7 +49,16 @@ const Products = () => {
         setProducts(productsData);
         setCategories(categoriesData);
         setSuppliers(suppliersData);
-    };
+    }, [shopId]);
+
+    useEffect(() => {
+        if (shopId) {
+            const timerId = setTimeout(() => {
+                loadData();
+            }, 0);
+            return () => clearTimeout(timerId);
+        }
+    }, [shopId, loadData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

@@ -21,7 +21,7 @@ const Reports = () => {
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [activeTab, setActiveTab] = useState('pos'); // 'pos' or 'repairs'
-    const [dateRange, setDateRange] = useState('month'); // today, week, month, all
+    const [dateRange, setDateRange] = useState('month'); // today, week, month
     const [stats, setStats] = useState({
         totalRevenue: 0,
         totalSales: 0,
@@ -83,9 +83,8 @@ const Reports = () => {
                 case 'month':
                     const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
                     return saleDateOnly >= monthAgo;
-                case 'all':
                 default:
-                    return true;
+                    return false;
             }
         });
     };
@@ -175,7 +174,6 @@ const Reports = () => {
             case 'today': return 'Today';
             case 'week': return 'Last 7 Days';
             case 'month': return 'Last 30 Days';
-            case 'all': return 'All Time';
             default: return 'Unknown';
         }
     };
@@ -307,7 +305,7 @@ const Reports = () => {
                             <span className="text-sm font-medium text-gray-700">Date Range:</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {['today', 'week', 'month', 'all'].map((range) => (
+                            {['today', 'week', 'month'].map((range) => (
                                 <button
                                     key={range}
                                     onClick={() => setDateRange(range)}
@@ -319,7 +317,6 @@ const Reports = () => {
                                     {range === 'today' && 'Today'}
                                     {range === 'week' && 'Last 7 Days'}
                                     {range === 'month' && 'Last 30 Days'}
-                                    {range === 'all' && 'All Time'}
                                 </button>
                             ))}
                         </div>
