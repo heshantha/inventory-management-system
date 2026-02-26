@@ -1094,6 +1094,48 @@ class SupabaseService {
         }
     }
 
+    async clearLastMonthSalesHistoryByShop(shopId) {
+        try {
+            const now = new Date();
+            const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+            const startOfLastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+
+            const startIso = startOfLastMonth.toISOString();
+            const endIso = startOfCurrentMonth.toISOString();
+
+            // Count first so UI can report exactly what was deleted.
+            const { count, error: countError } = await this.supabase
+                .from('sales')
+                .select('id', { count: 'exact', head: true })
+                .eq('shop_id', shopId)
+                .gte('created_at', startIso)
+                .lt('created_at', endIso);
+
+            if (countError) throw countError;
+
+            const { error } = await this.supabase
+                .from('sales')
+                .delete()
+                .eq('shop_id', shopId)
+                .gte('created_at', startIso)
+                .lt('created_at', endIso);
+
+            if (error) throw error;
+
+            return {
+                success: true,
+                deletedCount: count || 0,
+                dateRange: {
+                    start: startIso,
+                    end: endIso
+                }
+            };
+        } catch (error) {
+            console.error('Error clearing last month sales history:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
     async getSaleById(id) {
         try {
             const { data: sale, error } = await this.supabase

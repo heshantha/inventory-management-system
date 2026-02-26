@@ -326,6 +326,7 @@ const SuperAdminDashboard = () => {
 
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive', 'expiring'
     const [clearingSalesHistory, setClearingSalesHistory] = useState(false);
+    const [clearingLastMonthSalesHistory, setClearingLastMonthSalesHistory] = useState(false);
 
     const handleLogoFileUpload = (e) => {
         const file = e.target.files?.[0];
@@ -565,6 +566,37 @@ const SuperAdminDashboard = () => {
             alert('Error: ' + error.message);
         } finally {
             setClearingSalesHistory(false);
+        }
+    };
+
+    const handleClearLastMonthSalesHistory = async () => {
+        if (!editingShop?.id) return;
+
+        const now = new Date();
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const monthLabel = lastMonthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+        const confirmMessage = `⚠️ CLEAR LAST MONTH SALES?\n\nThis will permanently delete sales/invoices for "${editingShop.name}" only for ${monthLabel}.\n\nThis action cannot be undone.\n\nType "${editingShop.name}" to confirm:`;
+        const userInput = prompt(confirmMessage);
+
+        if (userInput === null) return;
+        if (userInput !== editingShop.name) {
+            alert('Shop name did not match. Operation cancelled.');
+            return;
+        }
+
+        setClearingLastMonthSalesHistory(true);
+        try {
+            const result = await supabaseService.clearLastMonthSalesHistoryByShop(editingShop.id);
+            if (result.success) {
+                alert(`Last month sales history cleared successfully.\n\nPeriod: ${monthLabel}\nDeleted records: ${result.deletedCount}`);
+            } else {
+                alert('Error clearing last month sales history: ' + result.message);
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            setClearingLastMonthSalesHistory(false);
         }
     };
 
@@ -878,8 +910,16 @@ const SuperAdminDashboard = () => {
                         <Button
                             type="button"
                             variant="danger"
+                            onClick={handleClearLastMonthSalesHistory}
+                            disabled={clearingLastMonthSalesHistory || clearingSalesHistory}
+                        >
+                            {clearingLastMonthSalesHistory ? 'Clearing Last Month...' : 'Clear Last Month Sales'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="danger"
                             onClick={handleClearSalesHistory}
-                            disabled={clearingSalesHistory}
+                            disabled={clearingSalesHistory || clearingLastMonthSalesHistory}
                         >
                             {clearingSalesHistory ? 'Clearing Sales...' : 'Clear Sales History'}
                         </Button>

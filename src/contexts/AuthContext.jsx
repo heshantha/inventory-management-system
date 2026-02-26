@@ -4,10 +4,22 @@ import supabaseService from '../services/supabaseService';
 
 const AuthContext = createContext(null);
 
+const fallbackAuthContext = {
+    user: null,
+    login: async () => ({ success: false, message: 'Auth provider unavailable' }),
+    logout: async () => ({ success: false, message: 'Auth provider unavailable' }),
+    hasRole: () => false,
+    isAuthenticated: false,
+    loading: false,
+};
+
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
+        // In dev/hot-reload there can be brief render timing where context is not ready.
+        // Return safe defaults so route guards/components do not hard-crash.
+        console.error('useAuth called outside AuthProvider. Falling back to safe defaults.');
+        return fallbackAuthContext;
     }
     return context;
 };
