@@ -14,7 +14,6 @@ const Products = () => {
     const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [suppliers, setSuppliers] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [showDamageModal, setShowDamageModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -28,7 +27,6 @@ const Products = () => {
         selling_price: '',
         stock_quantity: 0,
         min_stock_level: 10,
-        supplier_id: '',
     });
     const [damageFormData, setDamageFormData] = useState({
         quantity: 1,
@@ -41,14 +39,12 @@ const Products = () => {
     const ITEMS_PER_PAGE = 10;
 
     const loadData = useCallback(async () => {
-        const [productsData, categoriesData, suppliersData] = await Promise.all([
+        const [productsData, categoriesData] = await Promise.all([
             api.products.getAll(shopId),
             api.categories.getAll(shopId),
-            api.suppliers.getAll(shopId),
         ]);
         setProducts(productsData);
         setCategories(categoriesData);
-        setSuppliers(suppliersData);
     }, [shopId]);
 
     useEffect(() => {
@@ -78,7 +74,6 @@ const Products = () => {
         const sanitizedData = {
             ...formData,
             category_id: formData.category_id || null,
-            supplier_id: formData.supplier_id || null,
         };
 
         const dataToSubmit = {
@@ -115,7 +110,6 @@ const Products = () => {
             selling_price: product.selling_price,
             stock_quantity: product.stock_quantity,
             min_stock_level: product.min_stock_level,
-            supplier_id: product.supplier_id || '',
         });
         setShowModal(true);
     };
@@ -137,7 +131,6 @@ const Products = () => {
             selling_price: '',
             stock_quantity: 0,
             min_stock_level: 10,
-            supplier_id: '',
         });
         setEditingProduct(null);
     };
@@ -462,7 +455,7 @@ const Products = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Category
@@ -476,23 +469,6 @@ const Products = () => {
                                 {categories.map((cat) => (
                                     <option key={cat.id} value={cat.id}>
                                         {cat.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Supplier
-                            </label>
-                            <select
-                                value={formData.supplier_id}
-                                onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                            >
-                                <option value="">Select Supplier</option>
-                                {suppliers.map((sup) => (
-                                    <option key={sup.id} value={sup.id}>
-                                        {sup.name}
                                     </option>
                                 ))}
                             </select>

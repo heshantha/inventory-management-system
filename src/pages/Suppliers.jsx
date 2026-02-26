@@ -4,21 +4,13 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, Truck, Phone, Mail, MapPin, Package, Eye, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Truck, Phone, Mail, MapPin } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
-import { formatCurrency } from '../utils/calculations';
 
 const Suppliers = () => {
     const { shopId, currentShop } = useShop();
     const [suppliers, setSuppliers] = useState([]);
-    const [products, setProducts] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [showProductsModal, setShowProductsModal] = useState(false);
-    const [selectedSupplier, setSelectedSupplier] = useState(null);
-    const [supplierProducts, setSupplierProducts] = useState([]);
-    const [loadingProducts, setLoadingProducts] = useState(false);
-    const [selectedProductIds, setSelectedProductIds] = useState([]);
-    const [productSearchTerm, setProductSearchTerm] = useState('');
     const [editingSupplier, setEditingSupplier] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
@@ -32,18 +24,12 @@ const Suppliers = () => {
     useEffect(() => {
         if (shopId) {
             loadSuppliers();
-            loadProducts();
         }
     }, [shopId]);
 
     const loadSuppliers = async () => {
         const data = await api.suppliers.getAll(shopId);
         setSuppliers(data);
-    };
-
-    const loadProducts = async () => {
-        const data = await api.products.getAll(shopId);
-        setProducts(data);
     };
 
     const handleSubmit = async (e) => {
@@ -58,14 +44,6 @@ const Suppliers = () => {
             : await api.suppliers.create(dataToSubmit);
 
         if (result.success) {
-            // Update products for this supplier
-            const supplierId = editingSupplier ? editingSupplier.id : result.id;
-            const productResult = await api.suppliers.updateProducts(supplierId, selectedProductIds);
-
-            if (!productResult.success) {
-                setToast({ show: true, message: 'Supplier saved but error updating products: ' + productResult.message, type: 'error' });
-            }
-
             await loadSuppliers();
             setShowModal(false);
             resetForm();
@@ -79,7 +57,7 @@ const Suppliers = () => {
         }
     };
 
-    const handleEdit = async (supplier) => {
+    const handleEdit = (supplier) => {
         setEditingSupplier(supplier);
         setFormData({
             name: supplier.name,
@@ -88,12 +66,6 @@ const Suppliers = () => {
             phone: supplier.phone || '',
             address: supplier.address || '',
         });
-
-        // Load current products for this supplier
-        const currentProducts = await api.suppliers.getProducts(supplier.id);
-        const currentProductIds = currentProducts.map(p => p.id);
-        setSelectedProductIds(currentProductIds);
-
         setShowModal(true);
     };
 
@@ -118,30 +90,6 @@ const Suppliers = () => {
             address: '',
         });
         setEditingSupplier(null);
-        setSelectedProductIds([]);
-        setProductSearchTerm('');
-    };
-
-    const toggleProductSelection = (productId) => {
-        setSelectedProductIds(prev =>
-            prev.includes(productId)
-                ? prev.filter(id => id !== productId)
-                : [...prev, productId]
-        );
-    };
-
-    const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(productSearchTerm.toLowerCase())
-    );
-
-    const handleViewProducts = async (supplier) => {
-        setSelectedSupplier(supplier);
-        setShowProductsModal(true);
-        setLoadingProducts(true);
-        const products = await api.suppliers.getProducts(supplier.id);
-        setSupplierProducts(products);
-        setLoadingProducts(false);
     };
 
     return (
@@ -252,24 +200,6 @@ const Suppliers = () => {
                                 )}
                             </div>
 
-                            {/* Product Count Badge and View Button */}
-                            <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                                <div className="flex items-center text-sm">
-                                    <Package size={16} className="mr-2 text-primary-600" />
-                                    <span className="font-medium text-gray-700">
-                                        {supplier.product_count || 0} Product{supplier.product_count !== 1 ? 's' : ''}
-                                    </span>
-                                </div>
-                                {(supplier.product_count || 0) > 0 && (
-                                    <button
-                                        onClick={() => handleViewProducts(supplier)}
-                                        className="flex items-center text-xs text-primary-600 hover:text-primary-800 font-medium"
-                                    >
-                                        <Eye size={14} className="mr-1" />
-                                        View Products
-                                    </button>
-                                )}
-                            </div>
                         </div>
                     ))
                 )}
@@ -352,63 +282,6 @@ const Suppliers = () => {
                         />
                     </div>
 
-                    {/* Product Selection Section */}
-                    <div className="pt-4 border-t border-gray-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Assign Products
-                        </label>
-                        <p className="text-xs text-gray-500 mb-3">
-                            Select products that this supplier provides
-                        </p>
-
-                        {/* Search Products */}
-                        <input
-                            type="text"
-                            value={productSearchTerm}
-                            onChange={(e) => setProductSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 mb-3"
-                            placeholder="Search products by name or SKU..."
-                        />
-
-                        {/* Product List with Checkboxes */}
-                        <div className="border border-gray-300 rounded-lg max-h-64 overflow-y-auto">
-                            {filteredProducts.length === 0 ? (
-                                <div className="p-4 text-center text-gray-500 text-sm">
-                                    No products found
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-gray-200">
-                                    {filteredProducts.map((product) => (
-                                        <label
-                                            key={product.id}
-                                            className="flex items-center p-3 hover:bg-gray-50 cursor-pointer"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedProductIds.includes(product.id)}
-                                                onChange={() => toggleProductSelection(product.id)}
-                                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                                            />
-                                            <div className="ml-3 flex-1">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {product.name}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    SKU: {product.sku} | Stock: {product.stock_quantity}
-                                                </div>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Selected Count */}
-                        <div className="mt-2 text-xs text-gray-600">
-                            {selectedProductIds.length} product{selectedProductIds.length !== 1 ? 's' : ''} selected
-                        </div>
-                    </div>
-
                     <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                         <Button
                             type="button"
@@ -427,82 +300,6 @@ const Suppliers = () => {
                 </form>
             </Modal>
 
-            {/* View Products Modal */}
-            <Modal
-                isOpen={showProductsModal}
-                onClose={() => {
-                    setShowProductsModal(false);
-                    setSelectedSupplier(null);
-                    setSupplierProducts([]);
-                }}
-                title={`Products from ${selectedSupplier?.name || 'Supplier'}`}
-            >
-                <div className="space-y-4">
-                    {loadingProducts ? (
-                        <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-                            <p className="text-gray-500 mt-4">Loading products...</p>
-                        </div>
-                    ) : supplierProducts.length === 0 ? (
-                        <div className="text-center py-8">
-                            <Package className="mx-auto text-gray-400 mb-4" size={48} />
-                            <p className="text-gray-500">No products found for this supplier</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Stock</th>
-                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cost Price</th>
-                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Selling Price</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {supplierProducts.map((product) => (
-                                        <tr key={product.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm text-gray-600">{product.sku}</td>
-                                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{product.name}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{product.category_name}</td>
-                                            <td className="px-4 py-3 text-sm text-right">
-                                                <span className={`font-medium ${product.stock_quantity <= 0 ? 'text-red-600' :
-                                                    product.stock_quantity < 10 ? 'text-yellow-600' :
-                                                        'text-green-600'
-                                                    }`}>
-                                                    {product.stock_quantity}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-600">
-                                                {formatCurrency(product.cost_price || 0)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right text-gray-900 font-medium">
-                                                {formatCurrency(product.selling_price || 0)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    <div className="flex justify-end pt-4 border-t border-gray-200">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => {
-                                setShowProductsModal(false);
-                                setSelectedSupplier(null);
-                                setSupplierProducts([]);
-                            }}
-                        >
-                            Close
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
             {toast.show && (
                 <Toast
                     message={toast.message}
