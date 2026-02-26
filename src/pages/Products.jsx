@@ -44,7 +44,11 @@ const Products = () => {
             api.categories.getAll(shopId),
         ]);
         setProducts(productsData);
-        setCategories(categoriesData);
+        setCategories(
+            [...categoriesData].sort((a, b) =>
+                (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' })
+            )
+        );
     }, [shopId]);
 
     useEffect(() => {
