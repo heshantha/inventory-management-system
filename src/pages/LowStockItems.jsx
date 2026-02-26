@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
-import { AlertTriangle, Package, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Package, ChevronUp, ChevronDown, Search, XCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
 const LowStockItems = () => {
     const { shopId } = useShop();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const [nameSortOrder, setNameSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -32,11 +33,19 @@ const LowStockItems = () => {
         () =>
             products
                 .filter((product) => Number(product.stock_quantity) <= Number(product.min_stock_level))
+                .filter((product) => {
+                    const query = searchQuery.toLowerCase().trim();
+                    if (!query) return true;
+                    return (
+                        (product.name || '').toLowerCase().includes(query) ||
+                        (product.sku || '').toLowerCase().includes(query)
+                    );
+                })
                 .sort((a, b) => {
                     const comparison = (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' });
                     return nameSortOrder === 'asc' ? comparison : -comparison;
                 }),
-        [products, nameSortOrder]
+        [products, searchQuery, nameSortOrder]
     );
     const totalPages = Math.max(1, Math.ceil(lowStockProducts.length / ITEMS_PER_PAGE));
     const safePage = Math.min(currentPage, totalPages);
@@ -52,6 +61,34 @@ const LowStockItems = () => {
                 <p className="text-sm md:text-base text-gray-600 mt-1">
                     Products that reached or dropped below minimum stock level
                 </p>
+            </div>
+
+            <div className="mb-4">
+                <div className="relative max-w-sm w-full">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Search by name or SKU..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => {
+                                setSearchQuery('');
+                                setCurrentPage(1);
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            title="Clear search"
+                        >
+                            <XCircle size={16} />
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -91,7 +128,9 @@ const LowStockItems = () => {
                             ) : lowStockProducts.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
-                                        No low stock products found.
+                                        {searchQuery
+                                            ? `No low stock products found matching "${searchQuery}".`
+                                            : 'No low stock products found.'}
                                     </td>
                                 </tr>
                             ) : (

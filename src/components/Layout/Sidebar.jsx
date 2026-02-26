@@ -62,7 +62,10 @@ const Sidebar = () => {
     // Add Garage menu item for Service Center shops only
     const businessType = currentShop?.business_type?.toLowerCase();
     if (businessType === 'service center' || businessType === 'garage' || businessType === 'nevil windscreen center') {
-        const garageLabel = businessType === 'nevil windscreen center' ? 'Repair Service' : 'Garage';
+        const garageLabel =
+            businessType === 'service center' || businessType === 'nevil windscreen center'
+                ? 'Repair Service'
+                : 'Garage';
         // Insert Garage after POS (index 2)
         shopMenu.splice(2, 0, { path: '/garage', icon: Wrench, label: garageLabel, roles: ['shop_owner', 'cashier', 'manager'] });
     }
@@ -98,7 +101,7 @@ const Sidebar = () => {
             {/* Navigation */}
             <nav className="flex-1 p-4 overflow-y-auto">
                 <ul className="space-y-2">
-                    {filteredMenu.map((item, index) => (
+                    {filteredMenu.map((item) => (
                         <React.Fragment key={item.path}>
                             <li className="relative group">
                                 <NavLink

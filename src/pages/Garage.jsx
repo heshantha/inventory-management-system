@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import ServiceInvoice from '../components/invoices/ServiceInvoice';
@@ -12,9 +11,10 @@ import { formatCurrency } from '../utils/calculations';
 const Garage = () => {
     const { user } = useAuth();
     const { shopId, currentShop } = useShop();
-    const navigate = useNavigate();
+    const normalizedBusinessType = (currentShop?.business_type || '').toLowerCase();
     const isNevilWindscreen = currentShop?.business_type === 'Nevil Windscreen Center';
-    const servicePageTitle = isNevilWindscreen ? 'Repair Service' : 'Garage Service';
+    const isRepairServiceLabel = normalizedBusinessType === 'service center' || isNevilWindscreen;
+    const servicePageTitle = isRepairServiceLabel ? 'Repair Service' : 'Garage Service';
 
     // Form states
     const [selectedServices, setSelectedServices] = useState([]);
@@ -404,7 +404,7 @@ const Garage = () => {
                     {servicePageTitle}
                 </h1>
                 <p className="text-gray-600 mt-1">
-                    {isNevilWindscreen ? 'Manage repair services' : 'Manage vehicle services and repairs'}
+                    {isRepairServiceLabel ? 'Manage repair services' : 'Manage vehicle services and repairs'}
                 </p>
             </div>
 
