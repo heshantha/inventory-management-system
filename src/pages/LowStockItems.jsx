@@ -9,7 +9,8 @@ const LowStockItems = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [nameSortOrder, setNameSortOrder] = useState('asc');
+    const [sortField, setSortField] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
@@ -42,10 +43,15 @@ const LowStockItems = () => {
                     );
                 })
                 .sort((a, b) => {
-                    const comparison = (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' });
-                    return nameSortOrder === 'asc' ? comparison : -comparison;
+                    if (sortField === 'stock') {
+                        const stockComparison = Number(a?.stock_quantity || 0) - Number(b?.stock_quantity || 0);
+                        if (stockComparison !== 0) return sortOrder === 'asc' ? stockComparison : -stockComparison;
+                    }
+
+                    const nameComparison = (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' });
+                    return sortOrder === 'asc' ? nameComparison : -nameComparison;
                 }),
-        [products, searchQuery, nameSortOrder]
+        [products, searchQuery, sortField, sortOrder]
     );
     const totalPages = Math.max(1, Math.ceil(lowStockProducts.length / ITEMS_PER_PAGE));
     const safePage = Math.min(currentPage, totalPages);
@@ -100,19 +106,50 @@ const LowStockItems = () => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            if (sortField === 'name') {
+                                                setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            } else {
+                                                setSortField('name');
+                                                setSortOrder('asc');
+                                            }
                                             setCurrentPage(1);
                                         }}
                                         className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
-                                        title={nameSortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+                                        title={sortField === 'name' && sortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
                                     >
                                         <span>Product</span>
-                                        {nameSortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                        {sortField === 'name' && sortOrder === 'desc' ? (
+                                            <ChevronDown size={14} />
+                                        ) : (
+                                            <ChevronUp size={14} />
+                                        )}
                                     </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (sortField === 'stock') {
+                                                setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            } else {
+                                                setSortField('stock');
+                                                setSortOrder('asc');
+                                            }
+                                            setCurrentPage(1);
+                                        }}
+                                        className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
+                                        title={sortField === 'stock' && sortOrder === 'asc' ? 'Sort max-min' : 'Sort min-max'}
+                                    >
+                                        <span>Stock</span>
+                                        {sortField === 'stock' && sortOrder === 'desc' ? (
+                                            <ChevronDown size={14} />
+                                        ) : (
+                                            <ChevronUp size={14} />
+                                        )}
+                                    </button>
+                                </th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Min Stock</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
