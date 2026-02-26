@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import PointOfSale from './pages/PointOfSale';
 import Products from './pages/Products';
+import LowStockItems from './pages/LowStockItems';
 import Customers from './pages/Customers';
 import Sales from './pages/Sales';
 import Promotions from './pages/Promotions';
@@ -83,6 +84,17 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Products />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/low-stock-items"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <LowStockItems />
             </MainLayout>
           </ProtectedRoute>
         }

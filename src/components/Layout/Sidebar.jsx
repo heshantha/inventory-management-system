@@ -18,6 +18,7 @@ import {
     Monitor,
     Megaphone,
     XCircle,
+    AlertTriangle,
     ChevronDown,
     ChevronRight,
     Warehouse,
@@ -41,6 +42,7 @@ const Sidebar = () => {
     // Inventory submenu items
     const inventoryItems = [
         { path: '/products', icon: Package, label: t('nav.products'), roles: ['shop_owner', 'manager', 'cashier'] },
+        { path: '/low-stock-items', icon: AlertTriangle, label: 'Low Stock Items', roles: ['shop_owner', 'manager', 'cashier'] },
         { path: '/damage-tracking', icon: XCircle, label: 'Damage Tracking', roles: ['shop_owner', 'manager'] },
         { path: '/categories', icon: FolderTree, label: t('nav.categories'), roles: ['shop_owner', 'cashier'] },
         { path: '/suppliers', icon: TruckIcon, label: t('nav.suppliers'), roles: ['shop_owner', 'cashier'] },

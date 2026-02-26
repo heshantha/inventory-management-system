@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import { AlertTriangle, Plus, Trash2, TrendingDown, Package, DollarSign, Edit } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, TrendingDown, Package, DollarSign, Edit, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 import Toast from '../components/common/Toast';
 
@@ -17,6 +17,7 @@ const DamageTracking = () => {
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [editingDamage, setEditingDamage] = useState(null);
+    const [nameSortOrder, setNameSortOrder] = useState('asc');
     const [formData, setFormData] = useState({
         product_id: '',
         quantity: 1,
@@ -148,6 +149,10 @@ const DamageTracking = () => {
             minute: '2-digit'
         });
     };
+    const sortedDamages = [...damages].sort((a, b) => {
+        const comparison = (a?.product_name || '').localeCompare(b?.product_name || '', undefined, { sensitivity: 'base' });
+        return nameSortOrder === 'asc' ? comparison : -comparison;
+    });
 
     return (
         <div className="p-3 md:p-6">
@@ -230,7 +235,15 @@ const DamageTracking = () => {
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Product
+                                    <button
+                                        type="button"
+                                        onClick={() => setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                        className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
+                                        title={nameSortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+                                    >
+                                        <span>Product</span>
+                                        {nameSortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     SKU
@@ -269,7 +282,7 @@ const DamageTracking = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                damages.map((damage) => (
+                                sortedDamages.map((damage) => (
                                     <tr key={damage.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">

@@ -4,7 +4,7 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, Tag, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
 const Categories = () => {
@@ -17,6 +17,7 @@ const Categories = () => {
         description: '',
     });
     const [searchTerm, setSearchTerm] = useState('');
+    const [nameSortOrder, setNameSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -86,9 +87,14 @@ const Categories = () => {
         setEditingCategory(null);
     };
 
-    const filteredCategories = categories.filter((category) =>
-        category.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-    );
+    const filteredCategories = categories
+        .filter((category) =>
+            category.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
+        )
+        .sort((a, b) => {
+            const comparison = (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' });
+            return nameSortOrder === 'asc' ? comparison : -comparison;
+        });
     const itemsPerPage = 10;
     const totalPages = Math.max(1, Math.ceil(filteredCategories.length / itemsPerPage));
     const effectiveCurrentPage = Math.min(currentPage, totalPages);
@@ -184,7 +190,18 @@ const Categories = () => {
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Category
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
+                                        title={nameSortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+                                    >
+                                        <span>Category</span>
+                                        {nameSortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Description
