@@ -18,6 +18,8 @@ const DamageTracking = () => {
     const [loading, setLoading] = useState(false);
     const [editingDamage, setEditingDamage] = useState(null);
     const [nameSortOrder, setNameSortOrder] = useState('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
     const [formData, setFormData] = useState({
         product_id: '',
         quantity: 1,
@@ -153,6 +155,12 @@ const DamageTracking = () => {
         const comparison = (a?.product_name || '').localeCompare(b?.product_name || '', undefined, { sensitivity: 'base' });
         return nameSortOrder === 'asc' ? comparison : -comparison;
     });
+    const totalPages = Math.max(1, Math.ceil(sortedDamages.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedDamages = sortedDamages.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE
+    );
 
     return (
         <div className="p-3 md:p-6">
@@ -237,7 +245,10 @@ const DamageTracking = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <button
                                         type="button"
-                                        onClick={() => setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                        onClick={() => {
+                                            setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            setCurrentPage(1);
+                                        }}
                                         className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
                                         title={nameSortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
                                     >
@@ -282,7 +293,7 @@ const DamageTracking = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                sortedDamages.map((damage) => (
+                                paginatedDamages.map((damage) => (
                                     <tr key={damage.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
@@ -341,6 +352,53 @@ const DamageTracking = () => {
                     </table>
                 </div>
             </div>
+
+            {sortedDamages.length > ITEMS_PER_PAGE && (
+                <div className="flex items-center justify-between mt-4 px-1">
+                    <p className="text-sm text-gray-600">
+                        Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, sortedDamages.length)} of {sortedDamages.length} records
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage === 1}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                        >
+                            ← Prev
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((page) => page === 1 || page === totalPages || Math.abs(page - safePage) <= 1)
+                            .reduce((acc, page, idx, arr) => {
+                                if (idx > 0 && page - arr[idx - 1] > 1) acc.push('...');
+                                acc.push(page);
+                                return acc;
+                            }, [])
+                            .map((item, idx) =>
+                                item === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
+                                ) : (
+                                    <button
+                                        key={item}
+                                        onClick={() => setCurrentPage(item)}
+                                        className={`px-3 py-1.5 text-sm border rounded-lg transition-colors ${safePage === item
+                                                ? 'bg-primary-600 text-white border-primary-600'
+                                                : 'border-gray-300 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {item}
+                                    </button>
+                                )
+                            )}
+                        <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage === totalPages}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
+                        >
+                            Next →
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Record Damage Modal */}
             <Modal

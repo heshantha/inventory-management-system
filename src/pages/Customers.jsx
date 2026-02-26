@@ -4,7 +4,7 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
 const Customers = () => {
@@ -20,8 +20,10 @@ const Customers = () => {
         notes: '',
     });
     const [searchTerm, setSearchTerm] = useState('');
+    const [nameSortOrder, setNameSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const ITEMS_PER_PAGE = 10;
 
     const loadCustomers = async () => {
         const data = await api.customers.getAll(shopId);
@@ -95,37 +97,18 @@ const Customers = () => {
         setEditingCustomer(null);
     };
 
-    const filteredCustomers = customers.filter((customer) =>
-        customer.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
-    );
-    const itemsPerPage = 10;
-    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / itemsPerPage));
+    const filteredCustomers = customers
+        .filter((customer) =>
+            customer.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
+        )
+        .sort((a, b) => {
+            const comparison = (a?.name || '').localeCompare(b?.name || '', undefined, { sensitivity: 'base' });
+            return nameSortOrder === 'asc' ? comparison : -comparison;
+        });
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE));
     const effectiveCurrentPage = Math.min(currentPage, totalPages);
-    const startIndex = (effectiveCurrentPage - 1) * itemsPerPage;
-    const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage);
-    const getVisiblePages = () => {
-        if (totalPages <= 7) {
-            return Array.from({ length: totalPages }, (_, index) => index + 1);
-        }
-
-        const pages = [1];
-        if (effectiveCurrentPage > 4) {
-            pages.push('left-ellipsis');
-        }
-
-        const middleStart = Math.max(2, effectiveCurrentPage - 1);
-        const middleEnd = Math.min(totalPages - 1, effectiveCurrentPage + 1);
-        for (let page = middleStart; page <= middleEnd; page += 1) {
-            pages.push(page);
-        }
-
-        if (effectiveCurrentPage < totalPages - 3) {
-            pages.push('right-ellipsis');
-        }
-        pages.push(totalPages);
-
-        return pages;
-    };
+    const startIndex = (effectiveCurrentPage - 1) * ITEMS_PER_PAGE;
+    const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     return (
         <div className="p-3 md:p-6">
@@ -193,7 +176,18 @@ const Customers = () => {
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Customer
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setNameSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="inline-flex items-center gap-1 hover:text-gray-700 transition-colors"
+                                        title={nameSortOrder === 'asc' ? 'Sort Z-A' : 'Sort A-Z'}
+                                    >
+                                        <span>Customer</span>
+                                        {nameSortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Contact
@@ -281,44 +275,46 @@ const Customers = () => {
                     </table>
                 </div>
             </div>
-            {filteredCustomers.length > 0 && (
-                <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            {filteredCustomers.length > ITEMS_PER_PAGE && (
+                <div className="flex items-center justify-between mt-4 px-1">
                     <p className="text-sm text-gray-600">
-                        Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length}
+                        Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length} customers
                     </p>
                     <div className="flex items-center gap-1">
                         <button
-                            type="button"
-                            onClick={() => setCurrentPage((prev) => Math.max(Math.min(prev, totalPages) - 1, 1))}
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={effectiveCurrentPage === 1}
-                            className="h-8 px-3 rounded-md border border-gray-300 text-sm text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
                         >
                             ← Prev
                         </button>
-                        {getVisiblePages().map((page, index) =>
-                            typeof page === 'number' ? (
-                                <button
-                                    key={page}
-                                    type="button"
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`h-8 min-w-8 px-2 rounded-md border text-sm ${effectiveCurrentPage === page
-                                        ? 'bg-blue-600 text-white border-blue-600'
-                                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {page}
-                                </button>
-                            ) : (
-                                <span key={`${page}-${index}`} className="h-8 min-w-8 inline-flex items-center justify-center text-gray-500">
-                                    ...
-                                </span>
-                            )
-                        )}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((page) => page === 1 || page === totalPages || Math.abs(page - effectiveCurrentPage) <= 1)
+                            .reduce((acc, page, idx, arr) => {
+                                if (idx > 0 && page - arr[idx - 1] > 1) acc.push('...');
+                                acc.push(page);
+                                return acc;
+                            }, [])
+                            .map((item, idx) =>
+                                item === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">…</span>
+                                ) : (
+                                    <button
+                                        key={item}
+                                        onClick={() => setCurrentPage(item)}
+                                        className={`px-3 py-1.5 text-sm border rounded-lg transition-colors ${effectiveCurrentPage === item
+                                                ? 'bg-primary-600 text-white border-primary-600'
+                                                : 'border-gray-300 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {item}
+                                    </button>
+                                )
+                            )}
                         <button
-                            type="button"
-                            onClick={() => setCurrentPage((prev) => Math.min(Math.min(prev, totalPages) + 1, totalPages))}
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={effectiveCurrentPage === totalPages}
-                            className="h-8 px-3 rounded-md border border-gray-300 text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-100 transition-colors"
                         >
                             Next →
                         </button>
