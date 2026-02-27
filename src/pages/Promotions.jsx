@@ -6,7 +6,7 @@ import { Megaphone, MessageCircle, Share2, Copy, Search, Tag, Smartphone } from 
 import { formatCurrency } from '../utils/calculations';
 
 const Promotions = () => {
-    const { shopId } = useShop();
+    const { shopId, currentShop } = useShop();
 
     // Data States
     const [products, setProducts] = useState([]);
@@ -23,12 +23,22 @@ const Promotions = () => {
     const [offerType, setOfferType] = useState('percentage'); // 'percentage' | 'fixed'
     const [offerValue, setOfferValue] = useState(10);
     const [customMessage, setCustomMessage] = useState('');
+    const isNevilWindscreen = currentShop?.business_type === 'Nevil Windscreen Center';
+    const defaultServiceTypes = [
+        'Oil Change',
+        'Brake Service',
+        'Engine Repair',
+        'Tire Service',
+        'AC Repair',
+        'Battery Replacement',
+        'General Maintenance',
+    ];
 
     useEffect(() => {
         if (shopId) {
             loadData();
         }
-    }, [shopId]);
+    }, [shopId, currentShop?.business_type]);
 
     const loadData = async () => {
         setLoading(true);
@@ -40,13 +50,20 @@ const Promotions = () => {
             setProducts(productsData || []);
             setCustomers(customersData || []);
 
-            // Load services from localStorage like RepairService.jsx does
-            const savedServices = localStorage.getItem('custom_repair_types');
-            if (savedServices) {
-                setServices(JSON.parse(savedServices));
-            } else {
-                setServices([]);
+            // Load service types from the same storage used by Garage/Repair Service page.
+            const storageKey = `custom_service_types_shop_${shopId || 'default'}`;
+            let customServiceTypes = [];
+            try {
+                const savedServices = localStorage.getItem(storageKey);
+                customServiceTypes = savedServices ? JSON.parse(savedServices) : [];
+            } catch (parseError) {
+                console.error('Error parsing saved service types:', parseError);
             }
+
+            const allServiceTypes = isNevilWindscreen
+                ? [...customServiceTypes]
+                : [...defaultServiceTypes, ...customServiceTypes];
+            setServices(Array.from(new Set(allServiceTypes)));
         } catch (error) {
             console.error('Error loading promotion data:', error);
         } finally {
