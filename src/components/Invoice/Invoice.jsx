@@ -124,12 +124,9 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                 <div className="grid grid-cols-2 gap-4 my-4 text-xl font-semibold" style={{ color: invoiceParagraphColor }}>
                                     <div>
                                         <p>Customer Name : <span className="font-normal">{invoice.customer_name || 'Walk-in Customer'}</span></p>
-                                        <p>Vehical no : <span className="font-normal">{invoice.vehicle_number || '—'}</span></p>
-                                        <p>Make/Model : <span className="font-normal">{invoice.make_model || invoice.service_type || '—'}</span></p>
                                     </div>
                                     <div>
                                         <p>Date : <span className="font-normal">{invoiceDate ? invoiceDate.toLocaleDateString('en-GB') : '—'}</span></p>
-                                        <p>Milage : <span className="font-normal">{invoice.mileage || '—'}</span></p>
                                     </div>
                                 </div>
 
