@@ -1,17 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import { formatCurrency } from '../utils/calculations';
 import Modal from '../components/common/Modal';
 import Invoice from '../components/Invoice/Invoice';
-import { Search, Eye, Calendar, DollarSign, ShoppingBag, Printer, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, Calendar, DollarSign, ShoppingBag, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
 
 const Sales = () => {
     const { shopId, currentShop } = useShop();
+    const pickerRef = useRef(null);
     const [sales, setSales] = useState([]);
     const [filteredSales, setFilteredSales] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [dateFilter, setDateFilter] = useState('month'); // today, week, month
+    const [showPicker, setShowPicker] = useState(false);
+    const [activePreset, setActivePreset] = useState('last30');
+
+    // Helper: midnight of a date
+    const startOf = (d) => { const r = new Date(d); r.setHours(0,0,0,0); return r; };
+    const endOf   = (d) => { const r = new Date(d); r.setHours(23,59,59,999); return r; };
+    const toISO   = (d) => d.toISOString().slice(0,10); // yyyy-mm-dd
+
+    const today = new Date();
+    const [startDate, setStartDate] = useState(toISO(new Date(today.getTime() - 29*24*60*60*1000)));
+    const [endDate,   setEndDate]   = useState(toISO(today));
+
+    const presets = [
+        { key: 'today',   label: 'Today',       days: 0 },
+        { key: 'yesterday', label: 'Yesterday',  days: 1, yesterday: true },
+        { key: 'last3',   label: 'Last 3 Days',  days: 2 },
+        { key: 'last7',   label: 'Last 7 Days',  days: 6 },
+        { key: 'last30',  label: 'Last 30 Days', days: 29 },
+    ];
+
+    const applyPreset = (preset) => {
+        const now = new Date();
+        if (preset.yesterday) {
+            const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+            setStartDate(toISO(yest));
+            setEndDate(toISO(yest));
+        } else {
+            const from = new Date(now.getTime() - preset.days * 24*60*60*1000);
+            setStartDate(toISO(from));
+            setEndDate(toISO(now));
+        }
+        setActivePreset(preset.key);
+    };
+
+    // Enforce max 30-day range when custom dates change
+    const handleStartDateChange = (val) => {
+        setActivePreset('custom');
+        setStartDate(val);
+        const s = new Date(val);
+        const e = new Date(endDate);
+        const maxEnd = new Date(s.getTime() + 29*24*60*60*1000);
+        if (e > maxEnd) setEndDate(toISO(maxEnd));
+        if (e < s) setEndDate(val);
+    };
+
+    const handleEndDateChange = (val) => {
+        setActivePreset('custom');
+        const s = new Date(startDate);
+        const e = new Date(val);
+        if (e < s) return; // can't end before start
+        const maxEnd = new Date(s.getTime() + 29*24*60*60*1000);
+        setEndDate(e > maxEnd ? toISO(maxEnd) : val);
+    };
+
+    const pickerLabel = () => {
+        const p = presets.find(p => p.key === activePreset);
+        if (p) return p.label;
+        return `${startDate}  →  ${endDate}`;
+    };
+
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showInvoice, setShowInvoice] = useState(false);
 
@@ -25,15 +85,17 @@ const Sales = () => {
         averageTransaction: 0,
     });
 
+    // Close picker on outside click
     useEffect(() => {
-        if (shopId) {
-            loadSales();
-        }
-    }, [shopId]);
+        const handler = (e) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
-    useEffect(() => {
-        filterSales();
-    }, [sales, searchTerm, dateFilter]);
+    useEffect(() => { if (shopId) loadSales(); }, [shopId]);
+    useEffect(() => { filterSales(); }, [sales, searchTerm, startDate, endDate]);
 
     const loadSales = async () => {
         const data = await api.sales.getAll(shopId);
@@ -58,23 +120,12 @@ const Sales = () => {
     const filterSales = () => {
         let filtered = [...sales];
 
-        // Date filter
-        const now = new Date();
+        // Date range filter
+        const s = startOf(new Date(startDate));
+        const e = endOf(new Date(endDate));
         filtered = filtered.filter(sale => {
-            const saleDate = new Date(sale.created_at);
-
-            switch (dateFilter) {
-                case 'today':
-                    return saleDate.toDateString() === now.toDateString();
-                case 'week':
-                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    return saleDate >= weekAgo;
-                case 'month':
-                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    return saleDate >= monthAgo;
-                default:
-                    return false;
-            }
+            const d = new Date(sale.created_at);
+            return d >= s && d <= e;
         });
 
         // Search filter
@@ -86,12 +137,8 @@ const Sales = () => {
         }
 
         setFilteredSales(filtered);
-        setStats(prev => ({ // keep prev if needed, but we overwrite properties
-            // Actually calculateStats overwrites stats, so...
-            ...prev
-        }));
         calculateStats(filtered);
-        setCurrentPage(1); // Reset to first page on filter change
+        setCurrentPage(1);
     };
 
     const viewInvoice = (sale) => {
@@ -175,18 +222,53 @@ const Sales = () => {
                         />
                     </div>
 
-                    {/* Date Filter */}
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                        <select
-                            value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    {/* Date Range Picker */}
+                    <div className="relative" ref={pickerRef}>
+                        <button
+                            onClick={() => setShowPicker(v => !v)}
+                            className="w-full flex items-center justify-between pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm text-gray-700"
                         >
-                            <option value="today">Today</option>
-                            <option value="week">Last 7 Days</option>
-                            <option value="month">Last 30 Days</option>
-                        </select>
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <span className="font-medium">{pickerLabel()}</span>
+                            <ChevronDown size={16} className="text-gray-400" />
+                        </button>
+
+                        {showPicker && (
+                            <div className="absolute right-0 z-30 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-xl p-4">
+                                {/* Custom date inputs */}
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Select Date Range <span className="text-gray-400 normal-case font-normal">(max 30 days)</span></p>
+                                <div className="flex gap-2 items-center">
+                                    <div className="flex-1">
+                                        <label className="block text-xs text-gray-500 mb-1">From</label>
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            max={toISO(today)}
+                                            onChange={(e) => handleStartDateChange(e.target.value)}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        />
+                                    </div>
+                                    <div className="text-gray-400 mt-4">→</div>
+                                    <div className="flex-1">
+                                        <label className="block text-xs text-gray-500 mb-1">To</label>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            min={startDate}
+                                            max={toISO(new Date(Math.min(new Date(startDate).getTime() + 29*24*60*60*1000, today.getTime())))} 
+                                            onChange={(e) => handleEndDateChange(e.target.value)}
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowPicker(false)}
+                                    className="mt-3 w-full py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
