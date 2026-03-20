@@ -4,7 +4,8 @@ import api from '../services/api';
 import { formatCurrency } from '../utils/calculations';
 import Modal from '../components/common/Modal';
 import Invoice from '../components/Invoice/Invoice';
-import { Search, Eye, Calendar, DollarSign, ShoppingBag, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
+import { generateInvoicePDFBlob } from '../utils/pdfGenerator';
+import { Search, Eye, Calendar, DollarSign, ShoppingBag, ChevronLeft, ChevronRight, ChevronDown, X, Download } from 'lucide-react';
 
 const Sales = () => {
     const { shopId, currentShop } = useShop();
@@ -14,6 +15,10 @@ const Sales = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showPicker, setShowPicker] = useState(false);
     const [activePreset, setActivePreset] = useState('last30');
+
+    // Bulk selection state
+    const [selectedInvoices, setSelectedInvoices] = useState(new Set());
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Helper: midnight of a date
     const startOf = (d) => { const r = new Date(d); r.setHours(0,0,0,0); return r; };
@@ -156,6 +161,59 @@ const Sales = () => {
         return colors[method] || colors.other;
     };
 
+    const currentItems = filteredSales.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const handleSelectAll = () => {
+        if (selectedInvoices.size === currentItems.length && currentItems.length > 0) {
+            setSelectedInvoices(new Set());
+        } else {
+            setSelectedInvoices(new Set(currentItems.map(s => s.id)));
+        }
+    };
+
+    const handleSelectInvoice = (id) => {
+        const next = new Set(selectedInvoices);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedInvoices(next);
+    };
+
+    const handleBulkDownload = async () => {
+        if (selectedInvoices.size === 0) return;
+        setIsDownloading(true);
+        try {
+            const invoicesToDownload = sales.filter(s => selectedInvoices.has(s.id));
+            for (const inv of invoicesToDownload) {
+                const pdfBlob = generateInvoicePDFBlob(inv, currentShop);
+                const fileName = `Invoice_${inv.invoice_number || 'invoice'}.pdf`;
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                // Slight delay to prevent the browser from blocking sequential downloads
+                await new Promise(r => setTimeout(r, 600));
+            }
+            setSelectedInvoices(new Set());
+        } catch (err) {
+            console.error('Bulk download failed', err);
+            alert('Error downloading invoices.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    // Reset selection when page changes
+    useEffect(() => {
+        setSelectedInvoices(new Set());
+    }, [currentPage, filteredSales]);
+
     return (
         <div className="p-6">
             {/* Header */}
@@ -273,12 +331,35 @@ const Sales = () => {
                 </div>
             </div>
 
+            {/* Bulk Actions Toolbar */}
+            {selectedInvoices.size > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex justify-between items-center transition-all shadow-sm">
+                    <span className="text-blue-800 font-medium ml-2">{selectedInvoices.size} invoice(s) selected</span>
+                    <button
+                        onClick={handleBulkDownload}
+                        disabled={isDownloading}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+                    >
+                        <Download size={16} />
+                        {isDownloading ? 'Downloading...' : 'Download Selected'}
+                    </button>
+                </div>
+            )}
+
             {/* Sales Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
+                                <th className="px-6 py-3 text-left w-12">
+                                    <input 
+                                        type="checkbox"
+                                        checked={currentItems.length > 0 && selectedInvoices.size === currentItems.length}
+                                        onChange={handleSelectAll}
+                                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Invoice
                                 </th>
@@ -302,17 +383,23 @@ const Sales = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredSales.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                                         {sales.length === 0
                                             ? 'No sales yet. Start making sales from the Point of Sale page.'
                                             : 'No sales match your filters.'}
                                     </td>
                                 </tr>
                             ) : (
-                                filteredSales
-                                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                                    .map((sale) => (
-                                        <tr key={sale.id} className="hover:bg-gray-50">
+                                currentItems.map((sale) => (
+                                        <tr key={sale.id} className={`hover:bg-gray-50 transition-colors ${selectedInvoices.has(sale.id) ? 'bg-blue-50/40' : ''}`}>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={selectedInvoices.has(sale.id)}
+                                                    onChange={() => handleSelectInvoice(sale.id)}
+                                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="font-medium text-gray-900">{sale.invoice_number}</div>
                                             </td>
