@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, Tag, Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Search, ChevronUp, ChevronDown, Download, Upload } from 'lucide-react';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
 const Categories = () => {
@@ -20,6 +20,8 @@ const Categories = () => {
     const [nameSortOrder, setNameSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const fileInputRef = useRef(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const loadCategories = async () => {
         const data = await api.categories.getAll(shopId);
@@ -87,6 +89,151 @@ const Categories = () => {
         setEditingCategory(null);
     };
 
+    const handleDownloadCSV = () => {
+        if (categories.length === 0) {
+            setToast({ show: true, message: 'No categories to download.', type: 'error' });
+            return;
+        }
+
+        const headers = ['Name', 'Description'];
+        const csvRows = categories.map(c => {
+            return [
+                `"${(c.name || '').replace(/"/g, '""')}"`,
+                `"${(c.description || '').replace(/"/g, '""')}"`
+            ].join(',');
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...csvRows].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `categories_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setToast({ show: true, message: 'Categories exported successfully!', type: 'success' });
+    };
+
+    const parseCSV = (text) => {
+        const result = [];
+        let row = [];
+        let cell = '';
+        let insideQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (insideQuotes) {
+                if (char === '"') {
+                    if (text[i + 1] === '"') {
+                        cell += '"';
+                        i++;
+                    } else {
+                        insideQuotes = false;
+                    }
+                } else {
+                    cell += char;
+                }
+            } else {
+                if (char === '"') {
+                    insideQuotes = true;
+                } else if (char === ',') {
+                    row.push(cell);
+                    cell = '';
+                } else if (char === '\n' || char === '\r') {
+                    row.push(cell);
+                    if (row.length > 0 && row.some(c => c.trim())) {
+                        result.push(row);
+                    }
+                    row = [];
+                    cell = '';
+                    if (char === '\r' && text[i + 1] === '\n') {
+                        i++;
+                    }
+                } else {
+                    cell += char;
+                }
+            }
+        }
+        if (cell || row.length > 0) {
+            row.push(cell);
+            if (row.some(c => c.trim())) {
+                result.push(row);
+            }
+        }
+        return result;
+    };
+
+    const handleUploadCSV = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setToast({ show: true, message: 'Uploading categories...', type: 'success' });
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const text = event.target.result;
+            const rows = parseCSV(text);
+            
+            if (rows.length <= 1) {
+                setToast({ show: true, message: 'CSV file is empty or invalid.', type: 'error' });
+                setIsUploading(false);
+                return;
+            }
+
+            const headers = rows[0].map(h => h.trim().toLowerCase());
+            const dataRows = rows.slice(1);
+            
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const row of dataRows) {
+                try {
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        rowData[header] = row[index]?.trim() || '';
+                    });
+
+                    if (!rowData['name']) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    const dataToSubmit = {
+                        name: rowData['name'],
+                        description: rowData['description'] || '',
+                        shop_id: shopId
+                    };
+
+                    const result = await api.categories.create(dataToSubmit);
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (err) {
+                    errorCount++;
+                }
+            }
+
+            await loadCategories();
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            
+            setToast({ 
+                show: true, 
+                message: `Upload complete. Success: ${successCount}. Failed: ${errorCount}. (Note: duplicate names may fail)`, 
+                type: errorCount > 0 ? 'error' : 'success' 
+            });
+        };
+        reader.onerror = () => {
+            setToast({ show: true, message: 'Failed to read file.', type: 'error' });
+            setIsUploading(false);
+        };
+        reader.readAsText(file);
+    };
+
     const filteredCategories = categories
         .filter((category) =>
             category.name?.toLowerCase().includes(searchTerm.trim().toLowerCase())
@@ -144,26 +291,56 @@ const Categories = () => {
                     </div>
                     <p className="text-sm md:text-base text-gray-600 mt-1">Manage your product categories</p>
                 </div>
-                <Button
-                    variant="primary"
-                    onClick={() => {
-                        if (currentShop && !canAddItem(categories.length, currentShop.package_type, 'categories')) {
-                            const usageInfo = getUsageInfo(categories.length, currentShop.package_type, 'categories');
-                            setToast({
-                                show: true,
-                                message: `Category limit reached (${usageInfo.limit}). Please upgrade your package.`,
-                                type: 'error'
-                            });
-                            return;
-                        }
-                        resetForm();
-                        setShowModal(true);
-                    }}
-                    className="w-full md:w-auto flex items-center justify-center"
-                >
-                    <Plus size={20} className="mr-2" />
-                    <span>Add Category</span>
-                </Button>
+                <div className="w-full md:w-auto flex flex-wrap items-center justify-end gap-3">
+                    <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleUploadCSV}
+                    />
+                    <Button
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        disabled={isUploading}
+                        title="Import Categories from CSV"
+                    >
+                        <Upload size={20} className="sm:mr-2" />
+                        <span className="hidden sm:inline">{isUploading ? 'Uploading...' : 'Import CSV'}</span>
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        onClick={handleDownloadCSV}
+                        className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        disabled={categories.length === 0 || isUploading}
+                        title="Download CSV"
+                    >
+                        <Download size={20} className="sm:mr-2" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={() => {
+                            if (currentShop && !canAddItem(categories.length, currentShop.package_type, 'categories')) {
+                                const usageInfo = getUsageInfo(categories.length, currentShop.package_type, 'categories');
+                                setToast({
+                                    show: true,
+                                    message: `Category limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                    type: 'error'
+                                });
+                                return;
+                            }
+                            resetForm();
+                            setShowModal(true);
+                        }}
+                        className="flex-1 md:flex-none flex items-center justify-center"
+                        disabled={isUploading}
+                    >
+                        <Plus size={20} className="mr-2" />
+                        <span>Add Category</span>
+                    </Button>
+                </div>
             </div>
 
             {/* Search */}
