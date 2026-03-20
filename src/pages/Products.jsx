@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
-import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle, Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, AlertTriangle, XCircle, Search, ChevronUp, ChevronDown, Download, Upload } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 import { canAddItem, getUsageInfo } from '../utils/packageLimits';
 
@@ -39,6 +39,9 @@ const Products = () => {
     const [sortOrder, setSortOrder] = useState('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+
+    const fileInputRef = useRef(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const loadData = useCallback(async () => {
         const [productsData, categoriesData] = await Promise.all([
@@ -186,6 +189,169 @@ const Products = () => {
         }
     };
 
+    const handleDownloadCSV = () => {
+        if (products.length === 0) {
+            setToast({ show: true, message: 'No products to download.', type: 'error' });
+            return;
+        }
+
+        const headers = ['Name', 'SKU', 'Category', 'Description', 'Cost Price', 'Selling Price', 'Stock Quantity', 'Min Stock Level'];
+        
+        const csvRows = products.map(p => {
+            return [
+                `"${(p.name || '').replace(/"/g, '""')}"`,
+                `"${(p.sku || '').replace(/"/g, '""')}"`,
+                `"${(p.category_name || '').replace(/"/g, '""')}"`,
+                `"${(p.description || '').replace(/"/g, '""')}"`,
+                p.cost_price,
+                p.selling_price,
+                p.stock_quantity,
+                p.min_stock_level
+            ].join(',');
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...csvRows].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `products_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setToast({ show: true, message: 'Products exported successfully!', type: 'success' });
+    };
+
+    const parseCSV = (text) => {
+        const result = [];
+        let row = [];
+        let cell = '';
+        let insideQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (insideQuotes) {
+                if (char === '"') {
+                    if (text[i + 1] === '"') {
+                        cell += '"';
+                        i++;
+                    } else {
+                        insideQuotes = false;
+                    }
+                } else {
+                    cell += char;
+                }
+            } else {
+                if (char === '"') {
+                    insideQuotes = true;
+                } else if (char === ',') {
+                    row.push(cell);
+                    cell = '';
+                } else if (char === '\n' || char === '\r') {
+                    row.push(cell);
+                    if (row.length > 0 && row.some(c => c.trim())) {
+                        result.push(row);
+                    }
+                    row = [];
+                    cell = '';
+                    if (char === '\r' && text[i + 1] === '\n') {
+                        i++;
+                    }
+                } else {
+                    cell += char;
+                }
+            }
+        }
+        if (cell || row.length > 0) {
+            row.push(cell);
+            if (row.some(c => c.trim())) {
+                result.push(row);
+            }
+        }
+        return result;
+    };
+
+    const handleUploadCSV = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setToast({ show: true, message: 'Uploading products...', type: 'success' });
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const text = event.target.result;
+            const rows = parseCSV(text);
+            
+            if (rows.length <= 1) {
+                setToast({ show: true, message: 'CSV file is empty or invalid.', type: 'error' });
+                setIsUploading(false);
+                return;
+            }
+
+            const headers = rows[0].map(h => h.trim().toLowerCase());
+            const dataRows = rows.slice(1);
+            
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const row of dataRows) {
+                try {
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        rowData[header] = row[index]?.trim() || '';
+                    });
+
+                    if (!rowData['name'] || !rowData['sku']) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    const categoryName = rowData['category'];
+                    const cat = categories.find(c => c.name.toLowerCase() === categoryName?.toLowerCase());
+                    const category_id = cat ? cat.id : null;
+
+                    const dataToSubmit = {
+                        name: rowData['name'],
+                        sku: rowData['sku'],
+                        category_id: category_id,
+                        description: rowData['description'] || '',
+                        cost_price: parseFloat(rowData['cost price']) || 0,
+                        selling_price: parseFloat(rowData['selling price']) || 0,
+                        stock_quantity: parseInt(rowData['stock quantity']) || 0,
+                        min_stock_level: parseInt(rowData['min stock level']) || 10,
+                        shop_id: shopId
+                    };
+
+                    const result = await api.products.create(dataToSubmit);
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (err) {
+                    errorCount++;
+                }
+            }
+
+            await loadData();
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            
+            setToast({ 
+                show: true, 
+                message: `Upload complete. Success: ${successCount}. Failed: ${errorCount}. (Note: duplicate SKUs fail)`, 
+                type: errorCount > 0 ? 'error' : 'success' 
+            });
+        };
+        reader.onerror = () => {
+            setToast({ show: true, message: 'Failed to read file.', type: 'error' });
+            setIsUploading(false);
+        };
+        reader.readAsText(file);
+    };
+
     const filteredProducts = products
         .filter((p) => {
             const q = searchQuery.toLowerCase().trim();
@@ -235,26 +401,56 @@ const Products = () => {
                     </div>
                     <p className="text-sm md:text-base text-gray-600 mt-1">Manage your inventory products</p>
                 </div>
-                <Button
-                    variant="primary"
-                    onClick={() => {
-                        if (currentShop && !canAddItem(products.length, currentShop.package_type, 'products')) {
-                            const usageInfo = getUsageInfo(products.length, currentShop.package_type, 'products');
-                            setToast({
-                                show: true,
-                                message: `Product limit reached (${usageInfo.limit}). Please upgrade your package.`,
-                                type: 'error'
-                            });
-                            return;
-                        }
-                        resetForm();
-                        setShowModal(true);
-                    }}
-                    className="w-full md:w-auto flex items-center justify-center"
-                >
-                    <Plus size={20} className="mr-2" />
-                    <span>Add Product</span>
-                </Button>
+                <div className="w-full md:w-auto flex flex-wrap items-center justify-end gap-3">
+                    <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleUploadCSV}
+                    />
+                    <Button
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        disabled={isUploading}
+                        title="Import Products from CSV"
+                    >
+                        <Upload size={20} className="sm:mr-2" />
+                        <span className="hidden sm:inline">{isUploading ? 'Uploading...' : 'Import CSV'}</span>
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        onClick={handleDownloadCSV}
+                        className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        disabled={products.length === 0 || isUploading}
+                        title="Download CSV"
+                    >
+                        <Download size={20} className="sm:mr-2" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={() => {
+                            if (currentShop && !canAddItem(products.length, currentShop.package_type, 'products')) {
+                                const usageInfo = getUsageInfo(products.length, currentShop.package_type, 'products');
+                                setToast({
+                                    show: true,
+                                    message: `Product limit reached (${usageInfo.limit}). Please upgrade your package.`,
+                                    type: 'error'
+                                });
+                                return;
+                            }
+                            resetForm();
+                            setShowModal(true);
+                        }}
+                        className="flex-1 md:flex-none flex items-center justify-center"
+                        disabled={isUploading}
+                    >
+                        <Plus size={20} className="mr-2" />
+                        <span>Add Product</span>
+                    </Button>
+                </div>
             </div>
 
             {/* Search Bar */}
