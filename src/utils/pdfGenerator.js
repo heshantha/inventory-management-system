@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatCurrency, formatDateTime } from './calculations';
 
@@ -494,4 +494,234 @@ export const downloadInvoicePDF = (invoice, shopInfo) => {
 
     // Save
     doc.save(`Invoice_${invoice.invoice_number}.pdf`);
+};
+
+/**
+ * Generate Invoice PDF as Blob (for WhatsApp share).
+ * Layout matches the on-screen Service Center invoice exactly:
+ *   INVOICE label | Logo+Shop header | Large No. | Customer/Date row
+ *   10-row bordered table | Subtotal/Discount(red)/Tax/Total | Signatures
+ */
+export const generateInvoicePDFBlob = (invoice, shopInfo) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageWidth = doc.internal.pageSize.getWidth(); // 210
+    const margin    = 12;
+    const contentW  = pageWidth - margin * 2;           // 186
+
+    // Number formatter without currency prefix e.g. "2,500.00"
+    const fmt = (n) => Number(n || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+
+    // Parse hex color -> RGB array
+    const hexStr = (shopInfo?.invoice_header_color || '#1e3a8a').replace('#', '');
+    const HC = [
+        parseInt(hexStr.substring(0, 2), 16),
+        parseInt(hexStr.substring(2, 4), 16),
+        parseInt(hexStr.substring(4, 6), 16),
+    ];
+
+    // Shop initials
+    const shopName = shopInfo?.name || 'SHOP';
+    const wds = shopName.trim().split(/\s+/).filter(Boolean);
+    const initials = wds.length >= 3
+        ? (wds[0][0] + wds[1][0] + wds[2][0]).toUpperCase()
+        : wds.length === 2
+            ? (wds[0][0] + wds[1][0]).toUpperCase()
+            : shopName.slice(0, 3).toUpperCase();
+
+    let y = margin;
+
+    // ── "INVOICE" label top-right ──
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('INVOICE', pageWidth - margin, y + 4, { align: 'right' });
+
+    y += 6;
+
+    // ── Colored logo box ──
+    const logoSz = 22;
+    doc.setFillColor(...HC);
+    doc.rect(margin, y, logoSz, logoSz, 'F');
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(initials, margin + logoSz / 2, y + logoSz / 2 + 2, { align: 'center' });
+
+    // ── Shop name + address + contact ──
+    const sX = margin + logoSz + 5;
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...HC);
+    doc.text(shopName.toUpperCase(), sX, y + 7);
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(50, 50, 50);
+    let dY = y + 13;
+    if (shopInfo?.address) { doc.text(shopInfo.address, sX, dY); dY += 5; }
+    const cp = [
+        shopInfo?.phone ? `Hot Line: ${shopInfo.phone}` : null,
+        shopInfo?.email ? `Email: ${shopInfo.email}` : null,
+    ].filter(Boolean).join('   ');
+    if (cp) doc.text(cp, sX, dY);
+
+    y += logoSz + 9;
+
+    // ── Invoice number (large, right-aligned) ──
+    const invNo = String(invoice.invoice_number || '').replace(/^INV[-\s]*/i, '');
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`No : ${invNo}`, pageWidth - margin, y, { align: 'right' });
+
+    y += 10;
+
+    // ── Customer Name + Date row ──
+    const invDate = invoice.created_at ? new Date(invoice.created_at) : null;
+    const dateStr = invDate ? invDate.toLocaleDateString('en-GB') : '';
+
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+
+    doc.setFont(undefined, 'bold');
+    const custLabel = 'Customer Name : ';
+    doc.text(custLabel, margin, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(invoice.customer_name || 'Walk-in Customer', margin + doc.getTextWidth(custLabel), y);
+
+    const dX = pageWidth / 2 + 5;
+    doc.setFont(undefined, 'bold');
+    const dateLabel = 'Date : ';
+    doc.text(dateLabel, dX, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(dateStr, dX + doc.getTextWidth(dateLabel), y);
+
+    y += 7;
+
+    // ── Items table: NO | ITEM | QUANTITY | RATE | AMOUNT (10 fixed rows) ──
+    const rowH = 8;
+    const cNo = 12, cQty = 24, cRate = 33, cAmt = 38;
+    const cItem = contentW - cNo - cQty - cRate - cAmt;
+
+    const xNo   = margin;
+    const xItem = xNo   + cNo;
+    const xQty  = xItem + cItem;
+    const xRate = xQty  + cQty;
+    const xAmt  = xRate + cRate;
+    const pad   = 1.5;
+
+    // Header row
+    const headerY = y;
+    doc.setFillColor(...HC);
+    doc.rect(margin, headerY, contentW, rowH, 'F');
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(255, 255, 255);
+    const hMid = headerY + rowH / 2 + 1.5;
+
+    doc.text('No',       xNo   + pad,         hMid);
+    doc.text('Item',     xItem + pad,          hMid);
+    doc.text('Quantity', xQty  + cQty  / 2,   hMid, { align: 'center' });
+    doc.text('Rate',     xRate + cRate - pad,  hMid, { align: 'right' });
+    doc.text('Amount',   xAmt  + cAmt  - pad,  hMid, { align: 'right' });
+
+    // 10 data rows
+    const items = invoice.items || [];
+    doc.setDrawColor(190, 190, 190);
+    doc.setLineWidth(0.2);
+
+    for (let i = 0; i < 10; i++) {
+        const item = items[i];
+        const rY   = headerY + rowH * (i + 1);
+        const tY   = rY + rowH / 2 + 1.5;
+
+        doc.setFillColor(255, 255, 255);
+        doc.rect(margin, rY, contentW, rowH, 'FD');
+
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(String(i + 1), xNo + pad, tY);
+
+        if (item) {
+            const qty  = Number(item.quantity    || 0);
+            const rate = Number(item.unit_price  || 0);
+            const amt  = Number(item.total_price ?? (qty * rate));
+
+            // Truncate item name if too wide
+            const maxW = cItem - pad * 2;
+            let nm = String(item.name || item.product_name || '');
+            while (nm.length > 1 && doc.getTextWidth(nm) > maxW) nm = nm.slice(0, -1);
+            if (nm !== String(item.name || item.product_name || '')) nm += '..';
+
+            doc.text(nm,        xItem + pad,          tY);
+            doc.text(String(qty), xQty + cQty  / 2,  tY, { align: 'center' });
+            doc.text(fmt(rate), xRate + cRate - pad,  tY, { align: 'right' });
+            doc.text(fmt(amt),  xAmt  + cAmt  - pad,  tY, { align: 'right' });
+        } else {
+            doc.text('0.00', xAmt + cAmt - pad, tY, { align: 'right' });
+        }
+    }
+
+    y = headerY + rowH * 11 + 10;
+
+    // ── Totals block (right-aligned) ──
+    const tLX = pageWidth - margin - 72;
+    const tVX = pageWidth - margin;
+
+    const subtotal = Number(invoice.subtotal ?? invoice.total_amount ?? 0);
+    const discount = Number(invoice.discount_amount || 0);
+    const tax      = Number(invoice.tax_amount      || 0);
+    const total    = Number(invoice.total_amount    || 0);
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Subtotal', tLX, y);
+    doc.text(fmt(subtotal), tVX, y, { align: 'right' });
+
+    if (discount > 0) {
+        y += 7;
+        doc.setTextColor(220, 38, 38);
+        doc.text('Discount', tLX, y);
+        doc.text(`- ${fmt(discount)}`, tVX, y, { align: 'right' });
+    }
+
+    if (tax > 0) {
+        y += 7;
+        doc.setTextColor(0, 0, 0);
+        doc.text('Tax', tLX, y);
+        doc.text(fmt(tax), tVX, y, { align: 'right' });
+    }
+
+    y += 7;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.4);
+    doc.line(tLX, y - 2, tVX, y - 2);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Total', tLX, y + 4);
+    doc.text(fmt(total), tVX, y + 4, { align: 'right' });
+
+    // ── Signature lines ──
+    y += 22;
+    const sigW = 60;
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(130, 130, 130);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    doc.line(margin, y, margin + sigW, y);
+    doc.text('Authorized Signature', margin + sigW / 2, y + 5, { align: 'center' });
+
+    doc.line(pageWidth - margin - sigW, y, pageWidth - margin, y);
+    doc.text('Customer Signature', pageWidth - margin - sigW / 2, y + 5, { align: 'center' });
+
+    return doc.output('blob');
 };

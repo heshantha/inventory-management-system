@@ -281,6 +281,10 @@ const PointOfSale = () => {
             if (invoice) {
                 invoice = {
                     ...invoice,
+                    // Ensure subtotal, discount, and tax are always present for the invoice display
+                    subtotal: invoice.subtotal ?? totals.subtotal,
+                    discount_amount: invoice.discount_amount ?? totals.totalDiscounts,
+                    tax_amount: invoice.tax_amount ?? totals.taxAmount,
                     warranty: invoice.warranty || warranty || null, // Explicitly ensure warranty is included
                     customer_name: selectedCustomer?.name,
                     customer_phone: selectedCustomer?.phone,
