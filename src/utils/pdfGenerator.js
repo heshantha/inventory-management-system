@@ -1,4 +1,4 @@
-﻿import jsPDF from 'jspdf';
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatCurrency, formatDateTime } from './calculations';
 
@@ -666,6 +666,15 @@ export const generateInvoicePDFBlob = (invoice, shopInfo) => {
             doc.text('0.00', xAmt + cAmt - pad, tY, { align: 'right' });
         }
     }
+
+    // Draw vertical column separator lines spanning full table (header + 10 rows)
+    const tableTop    = headerY;
+    const tableBottom = headerY + rowH * 11;
+    doc.setDrawColor(190, 190, 190);
+    doc.setLineWidth(0.2);
+    [xItem, xQty, xRate, xAmt].forEach(xCol => {
+        doc.line(xCol, tableTop, xCol, tableBottom);
+    });
 
     y = headerY + rowH * 11 + 10;
 

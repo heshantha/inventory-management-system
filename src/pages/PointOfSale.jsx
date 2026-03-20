@@ -38,6 +38,7 @@ const PointOfSale = () => {
     const [showReceipt, setShowReceipt] = useState(false);
     const [currentInvoice, setCurrentInvoice] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [stockErrors, setStockErrors] = useState({});
     const [showDropdown, setShowDropdown] = useState(false);
     const [customerSearchTerm, setCustomerSearchTerm] = useState('');
     const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -175,12 +176,22 @@ const PointOfSale = () => {
 
     const addToCart = (product) => {
         const existingItem = cart.find((item) => item.product_id === product.id);
+        const availableStock = product.stock_quantity ?? product.quantity ?? 0;
 
         if (existingItem) {
+            const newQty = existingItem.quantity + 1;
+            if (newQty > availableStock) {
+                setStockErrors(prev => ({
+                    ...prev,
+                    [product.id]: `Only ${availableStock} in stock`
+                }));
+                return;
+            }
+            setStockErrors(prev => { const e = { ...prev }; delete e[product.id]; return e; });
             setCart(
                 cart.map((item) =>
                     item.product_id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? { ...item, quantity: newQty }
                         : item
                 )
             );
@@ -205,6 +216,19 @@ const PointOfSale = () => {
     };
 
     const updateCartItem = (productId, field, value) => {
+        if (field === 'quantity') {
+            const qty = parseInt(value) || 0;
+            const product = products.find(p => p.id === productId);
+            const availableStock = product ? (product.stock_quantity ?? product.quantity ?? 0) : Infinity;
+            if (qty > availableStock) {
+                setStockErrors(prev => ({
+                    ...prev,
+                    [productId]: `Only ${availableStock} in stock`
+                }));
+            } else {
+                setStockErrors(prev => { const e = { ...prev }; delete e[productId]; return e; });
+            }
+        }
         setCart(
             cart.map((item) =>
                 item.product_id === productId ? { ...item, [field]: parseFloat(value) || 0 } : item
@@ -576,15 +600,18 @@ const PointOfSale = () => {
                                         <div className="grid grid-cols-2 gap-2 mb-3">
                                             <div>
                                                 <label className="text-xs text-gray-600 block mb-1 font-medium">Qty</label>
-                                                <input
+                                                 <input
                                                     type="number"
                                                     min="1"
                                                     value={item.quantity}
                                                     onChange={(e) =>
                                                         updateCartItem(item.product_id, 'quantity', e.target.value)
                                                     }
-                                                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                                    className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 ${stockErrors[item.product_id] ? 'border-red-400 focus:ring-red-400' : 'border-gray-300'}`}
                                                 />
+                                                {stockErrors[item.product_id] && (
+                                                    <p className="text-xs text-red-600 mt-1 font-medium">{stockErrors[item.product_id]}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="text-xs text-gray-600 block mb-1 font-medium">Disc</label>
@@ -722,7 +749,7 @@ const PointOfSale = () => {
                                         variant="primary"
                                         className="px-6 py-2.5 text-sm flex items-center justify-center whitespace-nowrap"
                                         onClick={handleCompleteSale}
-                                        disabled={loading}
+                                        disabled={loading || Object.keys(stockErrors).length > 0}
                                     >
                                         {loading ? (
                                             'Processing...'

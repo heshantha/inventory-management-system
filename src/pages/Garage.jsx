@@ -36,6 +36,7 @@ const Garage = () => {
     const [products, setProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [stockErrors, setStockErrors] = useState({});
 
     // Invoice state
     const [showInvoice, setShowInvoice] = useState(false);
@@ -191,6 +192,7 @@ const Garage = () => {
     };
 
     const removeItemUsed = (index) => {
+        setStockErrors(prev => { const e = { ...prev }; delete e[index]; return e; });
         setItemsUsed(itemsUsed.filter((_, i) => i !== index));
     };
 
@@ -208,10 +210,31 @@ const Garage = () => {
                     unit_price: product.selling_price,
                     total: product.selling_price * updated[index].quantity,
                 };
+                // Re-validate qty against new product's stock
+                const stock = product.stock_quantity ?? product.quantity ?? 0;
+                if (updated[index].quantity > stock) {
+                    setStockErrors(prev => ({ ...prev, [index]: `Only ${stock} in stock` }));
+                } else {
+                    setStockErrors(prev => { const e = { ...prev }; delete e[index]; return e; });
+                }
+            } else {
+                // Product deselected — clear error
+                setStockErrors(prev => { const e = { ...prev }; delete e[index]; return e; });
             }
         } else if (field === 'quantity') {
-            updated[index].quantity = parseInt(value) || 0;
-            updated[index].total = updated[index].unit_price * updated[index].quantity;
+            const qty = parseInt(value) || 0;
+            updated[index].quantity = qty;
+            updated[index].total = updated[index].unit_price * qty;
+            // Validate against stock
+            const product = products.find(p => String(p.id) === String(updated[index].product_id));
+            if (product) {
+                const stock = product.stock_quantity ?? product.quantity ?? 0;
+                if (qty > stock) {
+                    setStockErrors(prev => ({ ...prev, [index]: `Only ${stock} in stock` }));
+                } else {
+                    setStockErrors(prev => { const e = { ...prev }; delete e[index]; return e; });
+                }
+            }
         }
 
         setItemsUsed(updated);
@@ -611,12 +634,12 @@ const Garage = () => {
                                                 onChange={(e) => updateItemUsed(index, 'product_id', e.target.value)}
                                                 className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                             >
-                                                <option value="">Select Product</option>
-                                                {products.map((product) => (
-                                                    <option key={product.id} value={product.id}>
-                                                        {product.name} - {formatCurrency(product.selling_price)}
-                                                    </option>
-                                                ))}
+                                                 <option value="">Select Product</option>
+                                                 {products.filter(p => (p.quantity ?? p.stock_quantity ?? 0) > 0).map((product) => (
+                                                     <option key={product.id} value={product.id}>
+                                                         {product.name} - {formatCurrency(product.selling_price)}
+                                                     </option>
+                                                 ))}
                                             </select>
                                         </div>
                                         <div className="col-span-2">
@@ -628,8 +651,11 @@ const Garage = () => {
                                                 min="1"
                                                 value={item.quantity}
                                                 onChange={(e) => updateItemUsed(index, 'quantity', e.target.value)}
-                                                className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                                className={`w-full px-2 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 ${stockErrors[index] ? 'border-red-400 focus:ring-red-400' : 'border-gray-300'}`}
                                             />
+                                            {stockErrors[index] && (
+                                                <p className="text-xs text-red-600 mt-1 font-medium">{stockErrors[index]}</p>
+                                            )}
                                         </div>
                                         <div className="col-span-2">
                                             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -746,7 +772,7 @@ const Garage = () => {
                                 variant="primary"
                                 className="w-full mt-6"
                                 onClick={handleCompleteService}
-                                disabled={loading}
+                                disabled={loading || Object.keys(stockErrors).length > 0}
                             >
                                 {loading ? (
                                     'Processing...'
