@@ -454,22 +454,22 @@ const PointOfSale = () => {
                                                         : 'cursor-pointer'
                                                         }`}
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-gray-800">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="font-semibold text-gray-800 truncate pr-2">
                                                                     {product.name}
                                                                 </h4>
-                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                                    {product.sku}
+                                                                <span className="text-sm font-bold text-primary-600 flex-shrink-0">
+                                                                    {formatCurrency(product.selling_price)}
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-3 mt-1">
-                                                                <span className="text-sm font-bold text-primary-600">
-                                                                    {formatCurrency(product.selling_price)}
+                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded truncate max-w-[100px]">
+                                                                    {product.sku}
                                                                 </span>
                                                                 <span
-                                                                    className={`text-xs px-2 py-0.5 rounded font-medium ${product.stock_quantity <= 0
+                                                                    className={`text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap ${product.stock_quantity <= 0
                                                                         ? 'bg-red-100 text-red-700'
                                                                         : product.stock_quantity < 10
                                                                             ? 'bg-yellow-100 text-yellow-700'
@@ -483,7 +483,9 @@ const PointOfSale = () => {
                                                             </div>
                                                         </div>
                                                         {product.stock_quantity > 0 && (
-                                                            <Plus size={20} className="text-primary-600 ml-2" />
+                                                            <div className="flex-shrink-0 ml-2 text-primary-600 bg-primary-50 p-1.5 rounded-full">
+                                                                <Plus size={18} />
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </button>
@@ -581,69 +583,110 @@ const PointOfSale = () => {
                                 <p className="text-sm mt-2">Search and add products to start</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {cart.map((item) => (
-                                    <div key={item.product_id} className="bg-white p-4 rounded-lg border-2 border-gray-200 shadow-sm">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-semibold text-gray-800 text-base truncate">{item.name}</h4>
-                                                <p className="text-xs text-gray-500 truncate">{item.sku}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => removeFromCart(item.product_id)}
-                                                className="text-red-500 hover:text-red-700 transition-colors p-1 flex-shrink-0 ml-2"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col mb-4">
+                                <div className="p-4 border-b border-gray-100 bg-white">
+                                    <h2 className="text-lg font-semibold text-gray-800">Scanned Items</h2>
+                                </div>
+                                
+                                {/* Header Row */}
+                                <div className="hidden sm:grid grid-cols-[2fr_minmax(110px,1fr)_minmax(80px,1fr)_1fr_1fr_auto] gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider items-center">
+                                    <div>Item Name</div>
+                                    <div className="text-center w-full">Quantity</div>
+                                    <div className="text-center w-full">Disc</div>
+                                    <div className="text-right">Price</div>
+                                    <div className="text-right">Total</div>
+                                    <div className="w-8"></div>
+                                </div>
 
-                                        <div className="grid grid-cols-2 gap-2 mb-3">
-                                            <div>
-                                                <label className="text-xs text-gray-600 block mb-1 font-medium">Qty</label>
-                                                 <input
-                                                    type="number"
-                                                    min="1"
-                                                    value={item.quantity}
-                                                    onChange={(e) =>
-                                                        updateCartItem(item.product_id, 'quantity', e.target.value)
-                                                    }
-                                                    className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 ${stockErrors[item.product_id] ? 'border-red-400 focus:ring-red-400' : 'border-gray-300'}`}
-                                                />
-                                                {stockErrors[item.product_id] && (
-                                                    <p className="text-xs text-red-600 mt-1 font-medium">{stockErrors[item.product_id]}</p>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-gray-600 block mb-1 font-medium">Disc</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={item.discount_amount}
-                                                    onChange={(e) =>
-                                                        updateCartItem(item.product_id, 'discount_amount', e.target.value)
-                                                    }
-                                                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                                />
-                                            </div>
-                                        </div>
+                                <div className="flex flex-col divide-y divide-gray-100">
+                                    {cart.map((item) => (
+                                        <div key={item.product_id} className="p-4 hover:bg-gray-50/50 transition-colors relative">
+                                            <div className="grid grid-cols-1 sm:grid-cols-[2fr_minmax(110px,1fr)_minmax(80px,1fr)_1fr_1fr_auto] gap-3 sm:gap-4 items-center">
+                                                
+                                                {/* Product Name & SKU */}
+                                                <div className="flex flex-col min-w-0 pr-2">
+                                                    <h4 className="font-semibold text-gray-800 text-sm truncate" title={item.name}>{item.name}</h4>
+                                                    <p className="text-xs text-gray-500 mt-0.5 truncate">{item.sku}</p>
+                                                    
+                                                    {/* Mobile Only labels */}
+                                                    <div className="sm:hidden flex items-center gap-2 mt-2 text-xs text-gray-500">
+                                                        <span>Price: {formatCurrency(item.unit_price)}</span>
+                                                    </div>
+                                                </div>
 
-                                        <div className="flex flex-col gap-1 pt-2 border-t border-gray-200">
-                                            <div className="flex justify-between items-center text-xs text-gray-600">
-                                                <span>{item.quantity} × {formatCurrency(item.unit_price)}</span>
-                                            </div>
-                                            <div className="font-bold text-base text-primary-600 text-right">
-                                                {formatCurrency(
-                                                    calculateItemTotal(
+                                                {/* Quantity Controls */}
+                                                <div className="flex items-center justify-start sm:justify-center gap-0">
+                                                    <button
+                                                        onClick={() => updateCartItem(item.product_id, 'quantity', Math.max(1, item.quantity - 1))}
+                                                        className="w-8 h-8 rounded-l-md border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white font-medium shadow-sm z-[2]"
+                                                    >
+                                                        -
+                                                    </button>
+                                                     <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={item.quantity}
+                                                        onChange={(e) => updateCartItem(item.product_id, 'quantity', e.target.value)}
+                                                        className={`w-12 h-8 px-1 text-sm font-semibold text-center border-t border-b border-gray-300 focus:outline-none focus:ring-0 shadow-inner z-[1] ${stockErrors[item.product_id] ? 'bg-red-50 text-red-800' : 'bg-gray-50'}`}
+                                                    />
+                                                    <button
+                                                        onClick={() => updateCartItem(item.product_id, 'quantity', Number(item.quantity) + 1)}
+                                                        className="w-8 h-8 rounded-r-md border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors bg-white font-medium shadow-sm z-[2]"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+
+                                                {/* Discount */}
+                                                <div className="flex justify-start sm:justify-center relative">
+                                                    {/* Mobile Only Label */}
+                                                    <span className="sm:hidden text-xs text-gray-500 mr-2 self-center">Disc:</span>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={item.discount_amount}
+                                                        onChange={(e) => updateCartItem(item.product_id, 'discount_amount', e.target.value)}
+                                                        className="w-16 sm:w-20 h-8 px-2 text-sm font-medium text-center border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 shadow-sm"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+
+                                                {/* Unit Price */}
+                                                <div className="hidden sm:block text-right text-sm text-gray-700 font-medium">
+                                                    {formatCurrency(item.unit_price)}
+                                                </div>
+
+                                                {/* Total */}
+                                                <div className="text-right font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">
+                                                    {formatCurrency(calculateItemTotal(
                                                         item.quantity,
                                                         item.unit_price,
                                                         item.discount_amount,
                                                         item.tax_rate
-                                                    )
-                                                )}
+                                                    ))}
+                                                </div>
+
+                                                {/* Delete Action (Absolute on mobile) */}
+                                                <div className="absolute sm:relative top-4 sm:top-auto right-4 sm:right-auto flex justify-end">
+                                                    <button
+                                                        onClick={() => removeFromCart(item.product_id)}
+                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                                                        title="Remove Item"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </div>
+                                            
+                                            {/* Error Message */}
+                                            {stockErrors[item.product_id] && (
+                                                <p className="text-[11px] text-red-600 font-medium mt-1.5 flex items-center">
+                                                    {stockErrors[item.product_id]}
+                                                </p>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
