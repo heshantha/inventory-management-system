@@ -12,9 +12,24 @@ class SupabaseService {
             invoice_header_color,
             invoice_title_color,
             invoice_paragraph_color,
+            invoice_size,
             ...rest
         } = shopData;
         return rest;
+    }
+
+    isMissingColumnError(error) {
+        return (
+            error?.code === 'PGRST204' &&
+            typeof error?.message === 'string' &&
+            (
+                error.message.includes('invoice_logo_url') ||
+                error.message.includes('invoice_header_color') ||
+                error.message.includes('invoice_title_color') ||
+                error.message.includes('invoice_paragraph_color') ||
+                error.message.includes('invoice_size')
+            )
+        );
     }
 
     // ==================== SHOPS ====================
@@ -66,17 +81,7 @@ class SupabaseService {
             if (error) throw error;
             return { success: true, id: data.id };
         } catch (error) {
-            const missingBrandingColumn =
-                error?.code === 'PGRST204' &&
-                typeof error?.message === 'string' &&
-                (
-                    error.message.includes('invoice_logo_url') ||
-                    error.message.includes('invoice_header_color') ||
-                    error.message.includes('invoice_title_color') ||
-                    error.message.includes('invoice_paragraph_color')
-                );
-
-            if (missingBrandingColumn) {
+            if (this.isMissingColumnError(error)) {
                 try {
                     const fallbackShopData = this.removeInvoiceBrandingFields(shopData);
                     const { data: fallbackData, error: fallbackError } = await this.supabase
@@ -94,7 +99,7 @@ class SupabaseService {
                     return {
                         success: true,
                         id: fallbackData.id,
-                        warning: 'Invoice branding columns are not in database yet. Run add-invoice-branding-columns.sql to enable logo/colors.'
+                        warning: 'Some invoice columns are missing from the database. Please run add_invoice_size_column.sql in Supabase SQL Editor.'
                     };
                 } catch (fallbackErr) {
                     console.error('Error creating shop (fallback):', fallbackErr);
@@ -122,17 +127,7 @@ class SupabaseService {
             if (error) throw error;
             return { success: true };
         } catch (error) {
-            const missingBrandingColumn =
-                error?.code === 'PGRST204' &&
-                typeof error?.message === 'string' &&
-                (
-                    error.message.includes('invoice_logo_url') ||
-                    error.message.includes('invoice_header_color') ||
-                    error.message.includes('invoice_title_color') ||
-                    error.message.includes('invoice_paragraph_color')
-                );
-
-            if (missingBrandingColumn) {
+            if (this.isMissingColumnError(error)) {
                 try {
                     const fallbackShopData = this.removeInvoiceBrandingFields(shopData);
                     const { error: fallbackError } = await this.supabase
@@ -148,7 +143,7 @@ class SupabaseService {
                     if (fallbackError) throw fallbackError;
                     return {
                         success: true,
-                        warning: 'Invoice branding columns are not in database yet. Run add-invoice-branding-columns.sql to enable logo/colors.'
+                        warning: 'Some invoice columns are missing from the database. Please run add_invoice_size_column.sql in Supabase SQL Editor to enable invoice size selection.'
                     };
                 } catch (fallbackErr) {
                     console.error('Error updating shop (fallback):', fallbackErr);

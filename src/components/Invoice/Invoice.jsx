@@ -581,14 +581,15 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
 
                         /* Page setup */
                         @page {
-                            size: ${currentShop?.business_type === 'Service Center'
-                                ? 'A4'
-                                : currentShop?.business_type === 'Nevil Windscreen Center'
-                                    ? 'A4'
-                                    : ['Computer Shop'].includes(currentShop?.business_type)
-                                        ? '210mm 148mm'
-                                        : 'A4 landscape'};
-                            margin: ${['Nevil Windscreen Center', 'Service Center'].includes(currentShop?.business_type) ? '5mm' : '0'};
+                            size: ${(() => {
+                                const sz = currentShop?.invoice_size || 'half_a4';
+                                if (sz === 'thermal')       return '80mm auto';
+                                if (sz === 'half_a4')       return '210mm 148mm';
+                                if (sz === 'a4_portrait')   return 'A4';
+                                if (sz === 'a4_landscape')  return 'A4 landscape';
+                                return '210mm 148mm'; // default Half A4
+                            })()};
+                            margin: ${['a4_portrait', 'a4_landscape'].includes(currentShop?.invoice_size) ? '10mm' : currentShop?.invoice_size === 'thermal' ? '2mm' : '5mm'};
                         }
 
                         html, body {
@@ -611,49 +612,41 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                             margin: 0;
                             z-index: 9999;
                             background: white;
-                            padding: ${['Nevil Windscreen Center', 'Service Center'].includes(currentShop?.business_type) ? '0' : ['Computer Shop'].includes(currentShop?.business_type) ? '5mm' : '10mm'} !important;
+                            padding: ${currentShop?.invoice_size === 'thermal' ? '2mm' : currentShop?.invoice_size === 'half_a4' ? '5mm' : '10mm'} !important;
                         }
-                        
-                        /* Nevil & Service Center - full A4 page fill */
-                        ${['Nevil Windscreen Center', 'Service Center'].includes(currentShop?.business_type) ? `
-                            .service-invoice.nevil-invoice {
+
+                        /* Half A4 / thermal — compact layout */
+                        ${(currentShop?.invoice_size === 'half_a4' || currentShop?.invoice_size === 'thermal') ? `
+                            .service-invoice {
+                                width: ${currentShop?.invoice_size === 'thermal' ? '80mm' : '210mm'} !important;
+                                max-height: ${currentShop?.invoice_size === 'thermal' ? 'auto' : '148mm'} !important;
+                                overflow: hidden;
+                                box-sizing: border-box;
+                            }
+                            .service-invoice h1 { font-size: ${currentShop?.invoice_size === 'thermal' ? '12px' : '16px'} !important; margin-bottom: 2px !important; }
+                            .service-invoice h2 { font-size: ${currentShop?.invoice_size === 'thermal' ? '11px' : '14px'} !important; margin: 2px 0 !important; }
+                            .service-invoice h3 { font-size: ${currentShop?.invoice_size === 'thermal' ? '10px' : '12px'} !important; margin: 2px 0 !important; }
+                            .service-invoice p, .service-invoice span, .service-invoice div { font-size: ${currentShop?.invoice_size === 'thermal' ? '9px' : '10px'} !important; line-height: 1.2 !important; }
+                            .service-invoice th, .service-invoice td { padding: 2px 4px !important; font-size: ${currentShop?.invoice_size === 'thermal' ? '8px' : '9px'} !important; }
+                            .service-invoice .mb-4, .service-invoice .mb-6 { margin-bottom: 4px !important; }
+                            .service-invoice .mt-4, .service-invoice .mt-8 { margin-top: 4px !important; }
+                            .service-invoice .p-4, .service-invoice .p-6, .service-invoice .p-8 { padding: 0 !important; }
+                            .service-invoice .gap-3 { gap: 4px !important; }
+                        ` : ''}
+
+                        /* A4 Portrait / Landscape — full page fill */
+                        ${['a4_portrait', 'a4_landscape'].includes(currentShop?.invoice_size) ? `
+                            .service-invoice {
                                 width: 100% !important;
                                 min-height: 100% !important;
                                 height: 100% !important;
                                 padding: 10mm !important;
                                 box-sizing: border-box;
-                            }
-                            .service-invoice.service-center-invoice {
-                                width: 100% !important;
-                                height: 100% !important;
-                                min-height: 100% !important;
-                                padding: 6mm !important;
-                                box-sizing: border-box;
                                 overflow: visible;
                             }
                             .service-invoice .nevil-blue-bg { background: ${invoiceHeaderColor} !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            .service-invoice.nevil-invoice h1 { color: ${invoiceTitleColor} !important; }
+                            .service-invoice h1 { color: ${invoiceTitleColor} !important; }
                             .service-invoice .color-print-bg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        ` : ''}
-                        
-                        /* Computer Shop (compact ticket) */
-                        ${['Computer Shop'].includes(currentShop?.business_type) ? `
-                            .service-invoice {
-                                width: 210mm !important;
-                                height: 148mm !important;
-                                max-height: 148mm !important;
-                                overflow: hidden;
-                                padding: 5mm !important;
-                            }
-                            .service-invoice h1 { font-size: 16px !important; margin-bottom: 2px !important; }
-                            .service-invoice h2 { font-size: 14px !important; margin: 2px 0 !important; }
-                            .service-invoice h3 { font-size: 12px !important; margin: 2px 0 !important; }
-                            .service-invoice p, .service-invoice span, .service-invoice div { font-size: 10px !important; line-height: 1.2 !important; }
-                            .service-invoice th, .service-invoice td { padding: 2px 4px !important; font-size: 9px !important; }
-                            .service-invoice .mb-4, .service-invoice .mb-6 { margin-bottom: 4px !important; }
-                            .service-invoice .mt-4, .service-invoice .mt-8 { margin-top: 4px !important; }
-                            .service-invoice .p-4, .service-invoice .p-6, .service-invoice .p-8 { padding: 0 !important; }
-                            .service-invoice .gap-3 { gap: 4px !important; }
                         ` : ''}
                     }
                 `

@@ -209,6 +209,23 @@ const ShopFormFields = ({ formData, setFormData, handleLogoFileUpload, isEdit = 
             />
         </div>
 
+        <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Print Size</label>
+            <select
+                value={formData.invoiceSize || 'half_a4'}
+                onChange={(e) => setFormData({ ...formData, invoiceSize: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            >
+                <option value="thermal">🧾 Thermal Printer (80mm width)</option>
+                <option value="half_a4">📄 Half A4 (210mm × 148mm)</option>
+                <option value="a4_portrait">📃 A4 Portrait (210mm × 297mm)</option>
+                <option value="a4_landscape">🖨️ A4 Landscape (297mm × 210mm)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+                Determines the paper size used when printing invoices for this shop.
+            </p>
+        </div>
+
         <div className="col-span-2 pt-4 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Owner Information</h3>
         </div>
@@ -317,6 +334,7 @@ const SuperAdminDashboard = () => {
         invoiceHeaderColor: '#1e3a8a',
         invoiceTitleColor: '#1e3a8a',
         invoiceParagraphColor: '#1f2937',
+        invoiceSize: 'half_a4',
         username: '',
         password: '',
         newPassword: '',
@@ -389,6 +407,7 @@ const SuperAdminDashboard = () => {
                 invoice_header_color: formData.invoiceHeaderColor || '#1e3a8a',
                 invoice_title_color: formData.invoiceTitleColor || '#1e3a8a',
                 invoice_paragraph_color: formData.invoiceParagraphColor || '#1f2937',
+                invoice_size: formData.invoiceSize || 'half_a4',
                 subscription_start_date: formData.subscriptionStartDate || null,
                 subscription_end_date: formData.subscriptionEndDate || null
             });
@@ -445,6 +464,7 @@ const SuperAdminDashboard = () => {
             invoiceHeaderColor: '#1e3a8a',
             invoiceTitleColor: '#1e3a8a',
             invoiceParagraphColor: '#1f2937',
+            invoiceSize: 'half_a4',
             username: '',
             password: '',
             newPassword: '',
@@ -473,6 +493,7 @@ const SuperAdminDashboard = () => {
             invoiceHeaderColor: shop.invoice_header_color || '#1e3a8a',
             invoiceTitleColor: shop.invoice_title_color || '#1e3a8a',
             invoiceParagraphColor: shop.invoice_paragraph_color || '#1f2937',
+            invoiceSize: shop.invoice_size || 'half_a4',
             username: ownerUser?.username || '',
             password: '',
             newPassword: '',
@@ -500,6 +521,7 @@ const SuperAdminDashboard = () => {
             invoice_header_color: formData.invoiceHeaderColor || '#1e3a8a',
             invoice_title_color: formData.invoiceTitleColor || '#1e3a8a',
             invoice_paragraph_color: formData.invoiceParagraphColor || '#1f2937',
+            invoice_size: formData.invoiceSize || 'half_a4',
             subscription_start_date: formData.subscriptionStartDate || null,
             subscription_end_date: formData.subscriptionEndDate || null
         });
