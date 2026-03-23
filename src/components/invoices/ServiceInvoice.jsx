@@ -317,8 +317,15 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
 
                         /* Page setup */
                         @page {
-                            size: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '210mm 148mm' : 'A4 landscape'};
-                            margin: 0;
+                            size: ${(() => {
+                                const sz = shopData?.invoice_size || 'half_a4';
+                                if (sz === 'thermal')       return '80mm auto';
+                                if (sz === 'half_a4')       return '210mm 148mm';
+                                if (sz === 'a4_portrait')   return 'A4';
+                                if (sz === 'a4_landscape')  return 'A4 landscape';
+                                return (['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type)) ? '210mm 148mm' : 'A4 landscape';
+                            })()};
+                            margin: ${['a4_portrait', 'a4_landscape'].includes(shopData?.invoice_size) ? '10mm' : shopData?.invoice_size === 'thermal' ? '2mm' : '5mm'};
                         }
 
                         html, body {
@@ -337,20 +344,35 @@ const ServiceInvoice = ({ serviceData, shopData, customerData, onClose, type = '
                             position: fixed;
                             left: 0;
                             top: 0;
-                            width: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '210mm' : '100%'};
-                            height: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '148mm' : '100%'};
-                            max-height: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '148mm' : 'none'};
+                            width: ${(() => {
+                                const sz = shopData?.invoice_size || 'half_a4';
+                                if (sz === 'thermal') return '80mm';
+                                if (sz === 'half_a4') return '210mm';
+                                return '100%';
+                            })()};
+                            height: ${(() => {
+                                const sz = shopData?.invoice_size || 'half_a4';
+                                if (sz === 'thermal') return 'auto';
+                                if (sz === 'half_a4') return '148mm';
+                                return '100%';
+                            })()};
+                            max-height: ${(() => {
+                                const sz = shopData?.invoice_size || 'half_a4';
+                                if (sz === 'thermal') return 'none';
+                                if (sz === 'half_a4') return '148mm';
+                                return 'none';
+                            })()};
                             margin: 0;
-                            padding: ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? '5mm' : '10mm'} !important;
+                            padding: ${['a4_portrait', 'a4_landscape'].includes(shopData?.invoice_size) ? '10mm' : shopData?.invoice_size === 'thermal' ? '2mm' : '5mm'} !important;
                             z-index: 9999;
                             background: white;
                             overflow: hidden;
                         }
 
-                        /* Compact Typography & Layout - Only for target shop types */
-                        ${['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type) ? `
+                        /* Compact Typography & Layout for Half A4 / Thermal */
+                        ${(shopData?.invoice_size === 'half_a4' || shopData?.invoice_size === 'thermal' || (!shopData?.invoice_size && ['Service Center', 'Garage', 'Computer Shop', 'Nevil Windscreen Center'].includes(shopData?.business_type))) ? `
                             .service-invoice * {
-                                font-size: 8px !important;
+                                font-size: ${shopData?.invoice_size === 'thermal' ? '7px' : '8px'} !important;
                                 line-height: 1.2 !important;
                             }
 

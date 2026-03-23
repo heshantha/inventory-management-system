@@ -327,11 +327,29 @@ export const downloadSalesReportPDF = (reportData, dateRange, shopInfo, reportTi
  * @param {Object} shopInfo - Shop information
  */
 export const downloadInvoicePDF = (invoice, shopInfo) => {
-    // A4 Landscape
+    // Determine PDF format based on shop setting
+    const sz = shopInfo?.invoice_size || 'half_a4';
+    let orientation = 'landscape';
+    let format = 'a4';
+
+    if (sz === 'thermal') {
+        orientation = 'portrait';
+        format = [80, 200]; // 80mm width, auto height approximated
+    } else if (sz === 'half_a4') {
+        orientation = 'landscape';
+        format = 'a5'; // A5 is Half A4
+    } else if (sz === 'a4_portrait') {
+        orientation = 'portrait';
+        format = 'a4';
+    } else if (sz === 'a4_landscape') {
+        orientation = 'landscape';
+        format = 'a4';
+    }
+
     const doc = new jsPDF({
-        orientation: 'landscape',
+        orientation,
         unit: 'mm',
-        format: 'a4'
+        format
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
