@@ -646,9 +646,17 @@ const PointOfSale = () => {
                                                     <h4 className="font-semibold text-gray-800 text-sm truncate" title={item.name}>{item.name}</h4>
                                                     <p className="text-xs text-gray-500 mt-0.5 truncate">{item.sku}</p>
                                                     
-                                                    {/* Mobile Only labels */}
+                                                    {/* Mobile Only - Editable Price */}
                                                     <div className="sm:hidden flex items-center gap-2 mt-2 text-xs text-gray-500">
-                                                        <span>Price: {formatCurrency(item.unit_price)}</span>
+                                                        <span>Price:</span>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={item.unit_price}
+                                                            onChange={(e) => updateCartItem(item.product_id, 'unit_price', e.target.value)}
+                                                            className="w-20 h-6 px-1.5 text-xs font-medium border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                                                        />
                                                     </div>
                                                 </div>
 
@@ -689,9 +697,16 @@ const PointOfSale = () => {
                                                     />
                                                 </div>
 
-                                                {/* Unit Price */}
-                                                <div className="hidden sm:block text-right text-sm text-gray-700 font-medium">
-                                                    {formatCurrency(item.unit_price)}
+                                                {/* Unit Price - Editable */}
+                                                <div className="hidden sm:flex justify-end">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={item.unit_price}
+                                                        onChange={(e) => updateCartItem(item.product_id, 'unit_price', e.target.value)}
+                                                        className="w-24 h-8 px-2 text-sm font-medium text-right border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 shadow-sm"
+                                                    />
                                                 </div>
 
                                                 {/* Total */}
