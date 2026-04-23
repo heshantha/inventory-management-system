@@ -476,7 +476,12 @@ class SupabaseService {
 
     async getAllCategories(shopId = null) {
         try {
-            let query = this.supabase.from('categories').select('*');
+            let query = this.supabase
+                .from('categories')
+                .select(`
+                    *,
+                    product_count:products(count)
+                `);
 
             if (shopId) {
                 query = query.eq('shop_id', shopId);
@@ -485,7 +490,12 @@ class SupabaseService {
             const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data || [];
+            
+            // Transform product count from array to number
+            return (data || []).map(category => ({
+                ...category,
+                product_count: category.product_count?.[0]?.count || 0
+            }));
         } catch (error) {
             console.error('Error getting categories:', error);
             return [];

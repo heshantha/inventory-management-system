@@ -37,6 +37,7 @@ const Products = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortField, setSortField] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
@@ -281,6 +282,7 @@ const Products = () => {
         reader.onload = async (event) => {
             const text = event.target.result;
             const rows = parseCSV(text);
+            let localCategories = [...categories];
             
             if (rows.length <= 1) {
                 setToast({ show: true, message: 'CSV file is empty or invalid.', type: 'error' });
@@ -306,9 +308,26 @@ const Products = () => {
                         continue;
                     }
 
-                    const categoryName = rowData['category'];
-                    const cat = categories.find(c => c.name.toLowerCase() === categoryName?.toLowerCase());
-                    const category_id = cat ? cat.id : null;
+                    // Handle category: find existing or create new
+                    let category_id = null;
+                    const catName = rowData['category']?.trim();
+                    if (catName) {
+                        let cat = (localCategories || []).find(c => c.name?.toLowerCase() === catName.toLowerCase());
+                        if (cat) {
+                            category_id = cat.id;
+                        } else {
+                            const newCatResult = await api.categories.create({
+                                name: catName,
+                                shop_id: shopId
+                            });
+                            if (newCatResult.success) {
+                                category_id = newCatResult.id;
+                                // Add to local categories list to avoid re-creating it in subsequent rows
+                                localCategories = [...localCategories, { id: category_id, name: catName }];
+                                setCategories(localCategories);
+                            }
+                        }
+                    }
 
                     const dataToSubmit = {
                         name: rowData['name'],
@@ -339,11 +358,21 @@ const Products = () => {
                 fileInputRef.current.value = '';
             }
             
-            setToast({ 
-                show: true, 
-                message: `Upload complete. Success: ${successCount}. Failed: ${errorCount}. (Note: duplicate SKUs fail)`, 
-                type: errorCount > 0 ? 'error' : 'success' 
-            });
+            if (successCount > 0) {
+                setToast({ 
+                    show: true, 
+                    message: `Successfully imported ${successCount} products.${errorCount > 0 ? ` (${errorCount} failed due to duplicate SKUs or missing data)` : ''}`, 
+                    type: 'success' 
+                });
+            } else if (errorCount > 0) {
+                setToast({ 
+                    show: true, 
+                    message: `Import failed: ${errorCount} items could not be imported (likely due to duplicate SKUs).`, 
+                    type: 'error' 
+                });
+            } else {
+                setToast({ show: true, message: 'No products were found in the file.', type: 'info' });
+            }
         };
         reader.onerror = () => {
             setToast({ show: true, message: 'Failed to read file.', type: 'error' });
@@ -360,6 +389,10 @@ const Products = () => {
                 p.name.toLowerCase().includes(q) ||
                 (p.sku && p.sku.toLowerCase().includes(q))
             );
+        })
+        .filter((p) => {
+            if (selectedCategory === 'all') return true;
+            return p.category_id === selectedCategory;
         })
         .sort((a, b) => {
             if (sortField === 'stock') {
@@ -453,8 +486,8 @@ const Products = () => {
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="mb-4">
+            {/* Search and Filters */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
                 <div className="relative max-w-sm w-full">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     <input
@@ -473,6 +506,18 @@ const Products = () => {
                             <XCircle size={16} />
                         </button>
                     )}
+                </div>
+                <div className="relative max-w-xs w-full">
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    >
+                        <option value="all">All Categories</option>
+                        {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
