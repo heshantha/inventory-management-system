@@ -8,6 +8,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import ThermalReceipt from '../components/ThermalReceipt/ThermalReceipt';
 import Invoice from '../components/Invoice/Invoice';
+import Toast from '../components/common/Toast';
 import {
     Search,
     Plus,
@@ -20,6 +21,7 @@ import {
     LogOut,
     UserCircle,
     Package,
+    UserPlus,
 } from 'lucide-react';
 
 const PointOfSale = () => {
@@ -46,6 +48,11 @@ const PointOfSale = () => {
     const dropdownRef = useRef(null);
     const customerDropdownRef = useRef(null);
     const isInitialMount = useRef(true);
+
+    const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+    const [newCustomerForm, setNewCustomerForm] = useState({ name: '', phone: '', email: '', address: '', notes: '' });
+    const [addingCustomer, setAddingCustomer] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const loadSavedPOSData = () => {
         try {
@@ -340,6 +347,27 @@ const PointOfSale = () => {
         // Keep customer, billDiscount, taxRate, warranty, and paymentMethod for convenience
     };
 
+    const handleAddCustomer = async (e) => {
+        e.preventDefault();
+        setAddingCustomer(true);
+        const result = await api.customers.create({ ...newCustomerForm, shop_id: shopId });
+        if (result.success) {
+            const updatedCustomers = await api.customers.getAll(shopId);
+            setCustomers(updatedCustomers);
+            const created = updatedCustomers.find(c => c.id === result.id);
+            if (created) {
+                setSelectedCustomer(created);
+            }
+            setShowAddCustomerModal(false);
+            setNewCustomerForm({ name: '', phone: '', email: '', address: '', notes: '' });
+            setCustomerSearchTerm('');
+            setToast({ show: true, message: 'Customer added successfully!', type: 'success' });
+        } else {
+            setToast({ show: true, message: 'Error: ' + result.message, type: 'error' });
+        }
+        setAddingCustomer(false);
+    };
+
     const totals = calculateTotals();
 
     return (
@@ -416,13 +444,9 @@ const PointOfSale = () => {
                                         value={searchTerm}
                                         onChange={(e) => {
                                             setSearchTerm(e.target.value);
-                                            setShowDropdown(e.target.value.length > 0);
+                                            setShowDropdown(true);
                                         }}
-                                        onFocus={() => {
-                                            if (searchTerm.length > 0) {
-                                                setShowDropdown(true);
-                                            }
-                                        }}
+                                        onFocus={() => setShowDropdown(true)}
                                         placeholder="Search products by name or SKU..."
                                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     />
@@ -435,7 +459,7 @@ const PointOfSale = () => {
                             </div>
 
                             {/* Product Dropdown */}
-                            {showDropdown && searchTerm && (
+                            {showDropdown && (
                                 <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto">
                                     {filteredProducts.length === 0 ? (
                                         <div className="p-4 text-center text-gray-500">
@@ -535,6 +559,20 @@ const PointOfSale = () => {
                             {/* Customer Dropdown */}
                             {showCustomerDropdown && (
                                 <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {/* Add New Customer Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowCustomerDropdown(false);
+                                            setNewCustomerForm({ name: customerSearchTerm, phone: '', email: '', address: '', notes: '' });
+                                            setShowAddCustomerModal(true);
+                                        }}
+                                        className="w-full text-left px-3 py-2.5 hover:bg-primary-50 border-b-2 border-primary-100 text-sm bg-primary-50/50 flex items-center gap-2"
+                                    >
+                                        <UserPlus size={16} className="text-primary-600 flex-shrink-0" />
+                                        <span className="font-semibold text-primary-700">Add New Customer</span>
+                                    </button>
+
                                     {/* Walk-in Option */}
                                     <button
                                         type="button"
@@ -552,7 +590,7 @@ const PointOfSale = () => {
                                     {customers
                                         .filter(c =>
                                             c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-                                            c.phone.toLowerCase().includes(customerSearchTerm.toLowerCase())
+                                            (c.phone || '').toLowerCase().includes(customerSearchTerm.toLowerCase())
                                         )
                                         .map((customer) => (
                                             <button
@@ -816,6 +854,97 @@ const PointOfSale = () => {
                     invoice={currentInvoice}
                     onClose={() => setShowReceipt(false)}
                     currentShop={currentShop}
+                />
+            )}
+
+            {/* Add Customer Modal */}
+            <Modal
+                isOpen={showAddCustomerModal}
+                onClose={() => {
+                    setShowAddCustomerModal(false);
+                    setNewCustomerForm({ name: '', phone: '', email: '', address: '', notes: '' });
+                }}
+                title="Add New Customer"
+            >
+                <form onSubmit={handleAddCustomer} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                        <input
+                            type="text"
+                            required
+                            value={newCustomerForm.name}
+                            onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            placeholder="e.g., John Doe"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input
+                                type="tel"
+                                value={newCustomerForm.phone}
+                                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                placeholder="e.g., +1234567890"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input
+                                type="email"
+                                value={newCustomerForm.email}
+                                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                placeholder="e.g., customer@example.com"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <textarea
+                            value={newCustomerForm.address}
+                            onChange={(e) => setNewCustomerForm({ ...newCustomerForm, address: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            rows={2}
+                            placeholder="Complete address"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea
+                            value={newCustomerForm.notes}
+                            onChange={(e) => setNewCustomerForm({ ...newCustomerForm, notes: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            rows={2}
+                            placeholder="Additional notes"
+                        />
+                    </div>
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setShowAddCustomerModal(false);
+                                setNewCustomerForm({ name: '', phone: '', email: '', address: '', notes: '' });
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="primary" disabled={addingCustomer}>
+                            {addingCustomer ? 'Adding...' : 'Add Customer'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {toast.show && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast({ ...toast, show: false })}
+                    duration={2000}
                 />
             )}
         </div>
