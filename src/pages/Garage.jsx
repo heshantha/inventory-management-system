@@ -5,7 +5,7 @@ import api from '../services/api';
 import Button from '../components/common/Button';
 import ServiceInvoice from '../components/invoices/ServiceInvoice';
 import Toast from '../components/common/Toast';
-import { Wrench, Plus, Trash2, Printer, X, Settings, Edit2 } from 'lucide-react';
+import { Wrench, Plus, Trash2, Printer, X, Settings, Edit2, Upload, Download } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
 const Garage = () => {
@@ -53,12 +53,15 @@ const Garage = () => {
         'Battery Replacement',
         'General Maintenance',
     ];
+    // customServiceTypes: [{ type: string, defaultWarranty: string }]
     const [customServiceTypes, setCustomServiceTypes] = useState([]);
     const [showAddServiceModal, setShowAddServiceModal] = useState(false);
     const [showManageServiceTypesModal, setShowManageServiceTypesModal] = useState(false);
     const [newServiceType, setNewServiceType] = useState('');
+    const [newServiceWarranty, setNewServiceWarranty] = useState('');
     const [editingServiceTypeIndex, setEditingServiceTypeIndex] = useState(null);
     const [editingServiceTypeName, setEditingServiceTypeName] = useState('');
+    const [editingServiceWarranty, setEditingServiceWarranty] = useState('');
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     // Vehicle types
@@ -76,19 +79,24 @@ const Garage = () => {
         if (shopId) {
             loadData();
         }
-        // Load custom service types from localStorage
+        // Load custom service types for this user+shop combination
         loadCustomServiceTypes();
-    }, [shopId]);
+    }, [shopId, user?.id]);
 
     const getServiceTypeStorageKey = () => {
-        return `custom_service_types_shop_${shopId || 'default'}`;
+        return `custom_service_types_shop_${shopId || 'default'}_user_${user?.id || 'guest'}`;
     };
 
     const loadCustomServiceTypes = () => {
         try {
             const saved = localStorage.getItem(getServiceTypeStorageKey());
             if (saved) {
-                setCustomServiceTypes(JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                // Migrate old string[] format to object[] format
+                const migrated = parsed.map(item =>
+                    typeof item === 'string' ? { type: item, defaultWarranty: '' } : item
+                );
+                setCustomServiceTypes(migrated);
             } else {
                 setCustomServiceTypes([]);
             }
@@ -106,22 +114,73 @@ const Garage = () => {
         }
     };
 
+    // --- CSV Export ---
+    const handleExportServiceTypesCSV = () => {
+        const allForExport = [
+            ...(isNevilWindscreen ? [] : defaultServiceTypes.map(t => ({ type: t, defaultWarranty: '' }))),
+            ...customServiceTypes,
+        ];
+        const rows = [['Service Type', 'Default Warranty'], ...allForExport.map(s => [s.type, s.defaultWarranty || ''])];
+        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'service_types.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // --- CSV Import ---
+    const handleImportServiceTypesCSV = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const text = ev.target.result;
+                const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+                // Skip header row
+                const dataLines = lines[0]?.toLowerCase().includes('service type') ? lines.slice(1) : lines;
+                const imported = [];
+                dataLines.forEach(line => {
+                    const parts = line.match(/(?:"([^"]*(?:""[^"]*)*)"|([^,]+))(?:,|$)/g) || [];
+                    const clean = parts.map(p => p.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+                    const typeName = clean[0];
+                    const warranty = clean[1] || '';
+                    if (typeName) imported.push({ type: typeName, defaultWarranty: warranty });
+                });
+                // Merge: keep existing, add new
+                const existingTypes = customServiceTypes.map(s => s.type);
+                const newOnes = imported.filter(s => !existingTypes.includes(s.type) && !defaultServiceTypes.includes(s.type));
+                // Update defaultWarranty for existing ones
+                const updated = customServiceTypes.map(s => {
+                    const found = imported.find(i => i.type === s.type);
+                    return found ? { ...s, defaultWarranty: found.defaultWarranty } : s;
+                });
+                saveCustomServiceTypes([...updated, ...newOnes]);
+                setToast({ show: true, message: `Imported ${imported.length} service types!`, type: 'success' });
+            } catch (err) {
+                setToast({ show: true, message: 'Failed to parse CSV file', type: 'error' });
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+
     const handleAddServiceType = () => {
         if (newServiceType.trim()) {
             const trimmed = newServiceType.trim();
-            // Check if it already exists in available types
-            const allTypes = [...defaultServiceTypes, ...customServiceTypes];
-            if (!allTypes.includes(trimmed)) {
-                const updated = [...customServiceTypes, trimmed];
-                saveCustomServiceTypes(updated);
+            const warranty = newServiceWarranty.trim();
+            const allTypeNames = [...defaultServiceTypes, ...customServiceTypes.map(s => s.type)];
+            if (!allTypeNames.includes(trimmed)) {
+                saveCustomServiceTypes([...customServiceTypes, { type: trimmed, defaultWarranty: warranty }]);
             }
-
-            // Add to selected services if not already selected
             if (!selectedServices.some(s => s.type === trimmed)) {
-                setSelectedServices([...selectedServices, { type: trimmed, warranty: '' }]);
+                setSelectedServices([...selectedServices, { type: trimmed, warranty }]);
             }
-
             setNewServiceType('');
+            setNewServiceWarranty('');
             setShowAddServiceModal(false);
             setToast({ show: true, message: 'New service type added successfully!', type: 'success' });
         }
@@ -130,50 +189,43 @@ const Garage = () => {
     const handleEditServiceType = (index) => {
         if (editingServiceTypeName.trim()) {
             const newName = editingServiceTypeName.trim();
-            const oldName = customServiceTypes[index];
-
-            // Check if name exists (excluding current)
-            if (customServiceTypes.some((name, i) => i !== index && name === newName)) {
+            const oldName = customServiceTypes[index].type;
+            if (customServiceTypes.some((s, i) => i !== index && s.type === newName)) {
                 setToast({ show: true, message: 'Service type with this name already exists', type: 'error' });
                 return;
             }
-
             const updated = [...customServiceTypes];
-            updated[index] = newName;
+            updated[index] = { type: newName, defaultWarranty: editingServiceWarranty.trim() };
             saveCustomServiceTypes(updated);
-
-            // Update selected services if they use this type
             const updatedSelected = selectedServices.map(s =>
                 s.type === oldName ? { ...s, type: newName } : s
             );
             setSelectedServices(updatedSelected);
-
             setEditingServiceTypeIndex(null);
             setEditingServiceTypeName('');
+            setEditingServiceWarranty('');
             setToast({ show: true, message: 'Service type updated successfully!', type: 'success' });
         }
     };
 
     const handleDeleteServiceType = (index) => {
-        const typeToDelete = customServiceTypes[index];
+        const typeToDelete = customServiceTypes[index].type;
         if (window.confirm(`Are you sure you want to delete "${typeToDelete}"?`)) {
-            const updated = customServiceTypes.filter((_, i) => i !== index);
-            saveCustomServiceTypes(updated);
-
-            // Remove from selected services if present
+            saveCustomServiceTypes(customServiceTypes.filter((_, i) => i !== index));
             if (selectedServices.some(s => s.type === typeToDelete)) {
                 setSelectedServices(selectedServices.filter(s => s.type !== typeToDelete));
             }
-
             setToast({ show: true, message: 'Service type deleted successfully!', type: 'success' });
         }
     };
 
-    // Combine default and custom service types
-    // Nevil uses only custom-added service types (no default preset list).
+    // Combine into unified list: { type, defaultWarranty }
     const allServiceTypes = isNevilWindscreen
         ? [...customServiceTypes]
-        : [...defaultServiceTypes, ...customServiceTypes];
+        : [
+            ...defaultServiceTypes.map(t => ({ type: t, defaultWarranty: '' })),
+            ...customServiceTypes,
+          ];
 
     const loadData = async () => {
         const [productsData, customersData] = await Promise.all([
@@ -488,20 +540,21 @@ const Garage = () => {
                                             onChange={(e) => {
                                                 const value = e.target.value;
                                                 if (value && !selectedServices.some(s => s.type === value)) {
-                                                    setSelectedServices([...selectedServices, { type: value, warranty: '' }]);
+                                                    const found = allServiceTypes.find(s => s.type === value);
+                                                    setSelectedServices([...selectedServices, { type: value, warranty: found?.defaultWarranty || '' }]);
                                                 }
                                                 setCurrentServiceSelection('');
                                             }}
                                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                         >
                                             <option value="">Select Service Type to Add...</option>
-                                            {allServiceTypes.map((type) => (
+                                            {allServiceTypes.map((s) => (
                                                 <option
-                                                    key={type}
-                                                    value={type}
-                                                    disabled={selectedServices.some(s => s.type === type)}
+                                                    key={s.type}
+                                                    value={s.type}
+                                                    disabled={selectedServices.some(sel => sel.type === s.type)}
                                                 >
-                                                    {type}
+                                                    {s.type}{s.defaultWarranty ? ` (${s.defaultWarranty})` : ''}
                                                 </option>
                                             ))}
                                         </select>
@@ -802,31 +855,33 @@ const Garage = () => {
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
                         <h2 className="text-xl font-bold text-gray-800 mb-4">Add New Service Type</h2>
 
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Service Type Name
-                            </label>
+                        <div className="mb-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Service Type Name *</label>
                             <input
                                 type="text"
                                 value={newServiceType}
                                 onChange={(e) => setNewServiceType(e.target.value)}
-                                onKeyPress={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleAddServiceType();
-                                    }
-                                }}
+                                onKeyPress={(e) => { if (e.key === 'Enter') handleAddServiceType(); }}
                                 placeholder="e.g., Suspension Repair"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                 autoFocus
                             />
                         </div>
 
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Default Warranty Period</label>
+                            <input
+                                type="text"
+                                value={newServiceWarranty}
+                                onChange={(e) => setNewServiceWarranty(e.target.value)}
+                                placeholder="e.g., 3 months, 1 year"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
+
                         <div className="flex gap-3 justify-end">
                             <button
-                                onClick={() => {
-                                    setShowAddServiceModal(false);
-                                    setNewServiceType('');
-                                }}
+                                onClick={() => { setShowAddServiceModal(false); setNewServiceType(''); setNewServiceWarranty(''); }}
                                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
                             >
                                 Cancel
@@ -843,92 +898,101 @@ const Garage = () => {
             )}
 
             {/* Manage Service Types Modal */}
-            {
-                showManageServiceTypesModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 flex flex-col max-h-[80vh]">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold text-gray-800">Manage Service Types</h2>
-                                <button onClick={() => setShowManageServiceTypesModal(false)} className="text-gray-500 hover:text-gray-700">
-                                    <X size={24} />
-                                </button>
-                            </div>
+            {showManageServiceTypesModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6 flex flex-col max-h-[85vh]">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-800">Manage Service Types</h2>
+                            <button onClick={() => setShowManageServiceTypesModal(false)} className="text-gray-500 hover:text-gray-700">
+                                <X size={24} />
+                            </button>
+                        </div>
 
-                            <div className="flex-1 overflow-y-auto pr-2">
-                                {customServiceTypes.length === 0 ? (
-                                    <p className="text-gray-500 text-center py-4">No custom service types added.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {customServiceTypes.map((type, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                {editingServiceTypeIndex === index ? (
-                                                    <div className="flex-1 flex gap-2 mr-2">
-                                                        <input
-                                                            type="text"
-                                                            value={editingServiceTypeName}
-                                                            onChange={(e) => setEditingServiceTypeName(e.target.value)}
-                                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500"
-                                                            autoFocus
-                                                        />
-                                                        <button
-                                                            onClick={() => handleEditServiceType(index)}
-                                                            className="text-green-600 hover:text-green-800"
-                                                        >
-                                                            <div className="w-5 h-5 flex items-center justify-center">✓</div>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingServiceTypeIndex(null);
-                                                                setEditingServiceTypeName('');
-                                                            }}
-                                                            className="text-gray-500 hover:text-gray-700"
-                                                        >
-                                                            <X size={18} />
-                                                        </button>
+                        {/* CSV Import / Export */}
+                        <div className="flex gap-2 mb-4">
+                            <button
+                                onClick={handleExportServiceTypesCSV}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                            >
+                                <Download size={15} /> Export CSV
+                            </button>
+                            <label className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm cursor-pointer">
+                                <Upload size={15} /> Import CSV
+                                <input type="file" accept=".csv" className="hidden" onChange={handleImportServiceTypesCSV} />
+                            </label>
+                            <span className="text-xs text-gray-400 self-center">CSV format: Service Type, Default Warranty</span>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-2">
+                            {customServiceTypes.length === 0 ? (
+                                <p className="text-gray-500 text-center py-4">No custom service types added.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {customServiceTypes.map((svc, index) => (
+                                        <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            {editingServiceTypeIndex === index ? (
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editingServiceTypeName}
+                                                        onChange={(e) => setEditingServiceTypeName(e.target.value)}
+                                                        placeholder="Service type name"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500"
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={editingServiceWarranty}
+                                                        onChange={(e) => setEditingServiceWarranty(e.target.value)}
+                                                        placeholder="Default warranty (e.g. 3 months)"
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500"
+                                                    />
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button onClick={() => handleEditServiceType(index)} className="text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
+                                                        <button onClick={() => { setEditingServiceTypeIndex(null); setEditingServiceTypeName(''); setEditingServiceWarranty(''); }} className="text-xs px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
                                                     </div>
-                                                ) : (
-                                                    <span className="font-medium text-gray-800">{type}</span>
-                                                )}
-
-                                                {editingServiceTypeIndex !== index && (
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <span className="font-medium text-gray-800">{svc.type}</span>
+                                                        {svc.defaultWarranty && (
+                                                            <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{svc.defaultWarranty}</span>
+                                                        )}
+                                                    </div>
                                                     <div className="flex gap-1">
                                                         <button
-                                                            onClick={() => {
-                                                                setEditingServiceTypeIndex(index);
-                                                                setEditingServiceTypeName(type);
-                                                            }}
-                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                                            title="Edit"
+                                                            onClick={() => { setEditingServiceTypeIndex(index); setEditingServiceTypeName(svc.type); setEditingServiceWarranty(svc.defaultWarranty || ''); }}
+                                                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit"
                                                         >
                                                             <Edit2 size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteServiceType(index)}
-                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                                                            title="Delete"
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete"
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
                                                     </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                                <button
-                                    onClick={() => setShowManageServiceTypesModal(false)}
-                                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                                >
-                                    Close
-                                </button>
-                            </div>
+                        <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+                            <button
+                                onClick={() => setShowManageServiceTypesModal(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
             {toast.show && (
                 <Toast
                     message={toast.message}
