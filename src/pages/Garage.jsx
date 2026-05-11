@@ -370,12 +370,10 @@ const Garage = () => {
                 mileage: mileage,
                 items_used: itemsUsed, // Keep original format for ServiceInvoice if needed, or map correctly
                 service_type: !isNevilWindscreen ? selectedServices.map(s => s.type).join(', ') : '',
-                service_warranty: !isNevilWindscreen
-                    ? selectedServices
+                service_warranty: selectedServices
                         .map(s => s.warranty ? `${s.type}: ${s.warranty}` : null)
                         .filter(Boolean)
-                        .join('; ')
-                    : '',
+                        .join('; '),
                 parts_total: totals.partsTotal,
                 service_charges: totals.serviceCharges,
                 labour_charges: totals.labourCharges,

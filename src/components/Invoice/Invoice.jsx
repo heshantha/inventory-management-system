@@ -205,6 +205,14 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                     </div>
                                 </div>
 
+                                {/* Warranty — shown only when present (Garage/Repair bills) */}
+                                {invoice.warranty && (
+                                    <div className="mb-2 text-sm font-semibold border border-gray-300 rounded px-3 py-2" style={{ color: invoiceParagraphColor }}>
+                                        <span className="text-gray-500 font-normal">Warranty : </span>
+                                        {invoice.warranty}
+                                    </div>
+                                )}
+
                                 <div className="overflow-x-auto mt-2">
                                     <table className="w-full border border-gray-400 text-sm">
                                         <thead className="color-print-bg">
@@ -343,6 +351,13 @@ const Invoice = ({ invoice, onClose, currentShop }) => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Warranty — shown only when present */}
+                                {invoice.warranty && (
+                                    <div className="text-[10px] md:text-xs mb-2 border border-gray-300 rounded px-2 py-1" style={{ color: invoiceParagraphColor }}>
+                                        <span className="font-bold">Warranty : </span>{invoice.warranty}
+                                    </div>
+                                )}
 
                                 {/* Items table: S.No., CODE, DESCRIPTION, QTY., RATE, VALUE, DISC%, AMOUNT */}
                                 <div className="overflow-x-auto -mx-1 mb-2">
