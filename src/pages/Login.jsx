@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, Lock, User } from 'lucide-react';
@@ -6,7 +6,7 @@ import Button from '../components/common/Button';
 
 const Login = () => {
     const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const passwordRef = useRef(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login, isAuthenticated } = useAuth();
@@ -25,13 +25,14 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        const result = await login(username, password);
+        const result = await login(username, passwordRef.current?.value || '');
 
         if (!result.success) {
             setError(result.message || 'Login failed. Please try again.');
+            // Clear the password field on failure
+            if (passwordRef.current) passwordRef.current.value = '';
             setLoading(false);
         } else {
-            // Redirect to dashboard on successful login
             console.log('🎯 Redirecting to dashboard...');
             navigate('/');
         }
@@ -91,11 +92,12 @@ const Login = () => {
                                     <Lock size={20} className="text-gray-400" />
                                 </div>
                                 <input
+                                    ref={passwordRef}
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    defaultValue=""
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                                     placeholder="Enter password"
+                                    autoComplete="current-password"
                                     required
                                 />
                             </div>
