@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useShop } from '../contexts/ShopContext';
 import api from '../services/api';
 import { formatCurrency } from '../utils/calculations';
-import Modal from '../components/common/Modal';
-import Invoice from '../components/Invoice/Invoice';
+
 import { generateInvoicePDFBlob } from '../utils/pdfGenerator';
 import { Search, Eye, Calendar, DollarSign, ShoppingBag, ChevronLeft, ChevronRight, ChevronDown, X, Download } from 'lucide-react';
 
@@ -77,8 +76,7 @@ const Sales = () => {
         return `${startDate}  →  ${endDate}`;
     };
 
-    const [selectedInvoice, setSelectedInvoice] = useState(null);
-    const [showInvoice, setShowInvoice] = useState(false);
+
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -146,9 +144,24 @@ const Sales = () => {
         setCurrentPage(1);
     };
 
-    const viewInvoice = (sale) => {
-        setSelectedInvoice(sale);
-        setShowInvoice(true);
+    const handleDownloadInvoice = async (sale) => {
+        try {
+            const pdfBlob = generateInvoicePDFBlob(sale, currentShop);
+            const fileName = `Invoice_${sale.invoice_number || 'invoice'}.pdf`;
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        } catch (err) {
+            console.error('Download failed', err);
+            alert('Error downloading invoice.');
+        }
     };
 
     const getPaymentMethodBadgeColor = (method) => {
@@ -433,11 +446,11 @@ const Sales = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <button
-                                                    onClick={() => viewInvoice(sale)}
-                                                    className="text-primary-600 hover:text-primary-900 inline-flex items-center"
+                                                    onClick={() => handleDownloadInvoice(sale)}
+                                                    className="text-blue-600 hover:text-blue-900 inline-flex items-center"
                                                 >
-                                                    <Eye size={18} className="mr-1" />
-                                                    View
+                                                    <Download size={18} className="mr-1" />
+                                                    Download
                                                 </button>
                                             </td>
                                         </tr>
@@ -479,14 +492,7 @@ const Sales = () => {
                     </div>
                 )}
             </div>
-            {/* Invoice Modal */}
-            {showInvoice && selectedInvoice && (
-                <Invoice
-                    invoice={selectedInvoice}
-                    onClose={() => setShowInvoice(false)}
-                    currentShop={currentShop}
-                />
-            )}
+
         </div>
     );
 };
